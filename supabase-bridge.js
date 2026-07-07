@@ -182,8 +182,61 @@
     return settingsPushChain;
   }
 
-  window.scPushCatalogSafe = scPushCatalogSafe;
-  window.scPushSettingsSafe = scPushSettingsSafe;
+  // Push SATU game saja (game row + produk-produknya), tidak menyentuh
+  // game lain sama sekali. Dipakai oleh sistem Draft/Antrian supaya tiap
+  // "Update" hanya memengaruhi game yang benar-benar diubah.
+  async function scPushSingleGame(game) {
+    const sb = window.supabaseClient;
+
+    const gameRow = {
+      id: game.id,
+      name: game.name,
+      initials: game.initials || "",
+      image_url: game.imageUrl || "",
+      from_label: game.from || "Cek admin",
+      color_a: (game.colors && game.colors[0]) || "#0b8f87",
+      color_b: (game.colors && game.colors[1]) || "#d97912",
+      status: game.status || "normal",
+      maintenance: game.maintenance || {},
+      featured: !!game.featured,
+      sort_order: game.sortOrder || 0,
+    };
+    const { error: gErr } = await sb.from("games").upsert(gameRow, { onConflict: "id" });
+    if (gErr) throw gErr;
+
+    await sb.from("products").delete().eq("game_id", game.id);
+
+    const productRows = (game.products || []).map((p, i) => ({
+      game_id: game.id,
+      name: p.name,
+      category: p.category || "",
+      cost_price: p.costPrice || "",
+      selling_price: p.sellingPrice || p.price || "",
+      promo_price: p.promoPrice || (p.promo ? p.price : "") || "",
+      promo: !!p.promo,
+      promo_badge: p.promoBadge || "",
+      promo_start: p.promoStart || null,
+      promo_end: p.promoEnd || null,
+      status: p.status || "normal",
+      sort_order: i,
+    }));
+    if (productRows.length) {
+      const { error: pErr } = await sb.from("products").insert(productRows);
+      if (pErr) throw pErr;
+    }
+  }
+
+  window.scPushSingleGame = scPushSingleGame;
+
+  // Hapus satu game dari Supabase. Produk-produknya ikut terhapus otomatis
+  // lewat "on delete cascade" di skema tabel products (lihat 01_setup.sql).
+  async function scDeleteGame(gameId) {
+    const sb = window.supabaseClient;
+    const { error } = await sb.from("games").delete().eq("id", gameId);
+    if (error) throw error;
+  }
+
+  window.scDeleteGame = scDeleteGame;
 
   window.scPullCatalog = scPullCatalog;
   window.scPushCatalog = scPushCatalog;

@@ -1299,3 +1299,54 @@ textarea {
   justify-content: center;
   margin-top: 20px;
 }
+/* ─── DRAFT PERUBAHAN ─────────────────────────────────── */
+.draft-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+.draft-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.draft-row-name {
+  flex: 1;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.draft-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.draft-status {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.draft-status-dirty { background: #f1eddb; color: #8a6d1c; }
+.draft-status-antri { background: #e7ecf3; color: var(--blue); }
+.draft-status-proses { background: #fdf3e2; color: var(--orange); }
+.draft-status-terupdate { background: #e1f5ea; color: var(--green); }
+.draft-status-gagal { background: #fdeceb; color: var(--red); }
