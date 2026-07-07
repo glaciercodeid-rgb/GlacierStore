@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin GlacierStore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+
+    <header class="topbar">
+      <button class="rail-toggle" type="button" aria-label="Buka menu admin" aria-expanded="false" data-rail-toggle>
+        <span></span><span></span><span></span>
+      </button>
+      <a class="brand" href="index.html" aria-label="GlacierStore website">
+        <span>GS</span>
+        <strong>GlacierStore</strong>
+        <small>admin</small>
+      </a>
+      <div class="topbar-line"></div>
+      <span class="topbar-page-label" data-page-label>Dashboard</span>
+    </header>
+
+    <div class="rail-overlay" data-rail-overlay></div>
+
+    <aside class="rail" aria-label="Admin navigation" data-rail>
+      <p class="rail-title">Menu Admin</p>
+      <button class="rail-button is-active" type="button" data-nav="dashboard" title="Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="rail-button" type="button" data-nav="games" title="Katalog Game">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 12v4m-2-2h4"/></svg>
+        <span>Katalog Game</span>
+      </button>
+      <button class="rail-button" type="button" data-nav="products" title="Manajemen Produk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span>Manajemen Produk</span>
+      </button>
+      <button class="rail-button" type="button" data-nav="sales" title="Penjualan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Penjualan</span>
+      </button>
+      <button class="rail-button" type="button" data-nav="capital" title="Modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span>Modal</span>
+      </button>
+      <button class="rail-button" type="button" data-nav="settings" title="Pengaturan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Pengaturan</span>
+      </button>
+    </aside>
+
+    <main class="admin-main">
+
+      <!-- ═══════════════════ PAGE: DASHBOARD ═══════════════════ -->
+      <section class="admin-page is-active" data-page="dashboard">
+        <div class="page-head">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Ringkasan katalog dan status operasional GlacierStore.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-nav-to="games">Kelola Game</button>
+            <button class="maintenance-button" type="button" data-open-bulk-modal>⚡ Bulk Maintenance</button>
+          </div>
+        </div>
+
+        <div class="dashboard-stats" data-dashboard-stats></div>
+
+        <div class="dashboard-two-col">
+          <article class="dash-card">
+            <h2>Status Operasional Sekarang</h2>
+            <div class="operational-live" data-dash-operational></div>
+          </article>
+          <article class="dash-card">
+            <h2>Status Pemeliharaan Sistem</h2>
+            <div class="maintenance-live" data-dash-maintenance></div>
+          </article>
+        </div>
+
+        <article class="dash-card">
+          <div class="dash-card-head">
+            <h2>Game dengan Masalah</h2>
+            <span class="dash-badge" data-dash-maintenance-count>0</span>
+          </div>
+          <div data-dash-maintenance-list></div>
+        </article>
+      </section>
+
+      <!-- ═══════════════════ PAGE: GAMES ═══════════════════ -->
+      <section class="admin-page" data-page="games">
+        <div class="page-head">
+          <div>
+            <h1>Katalog Game</h1>
+            <p>Tambah, edit, hapus game. Klik "Kelola Produk" untuk mengelola varian harga.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-open-game-modal>+ Tambah Game</button>
+            <button class="maintenance-button" type="button" data-open-bulk-modal>⚡ Bulk Maintenance</button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-box">
+            <span>🔍</span>
+            <input type="search" placeholder="Cari game..." data-search />
+          </label>
+          <select class="filter-select" data-filter>
+            <option value="all">Semua Status</option>
+            <option value="normal">Aktif</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="gangguan">Gangguan</option>
+            <option value="segera-hadir">Segera Hadir</option>
+          </select>
+        </div>
+
+        <div class="game-grid-admin" data-game-grid></div>
+      </section>
+
+      <!-- ═══════════════════ PAGE: PRODUCTS ═══════════════════ -->
+      <section class="admin-page" data-page="products">
+        <div class="page-head">
+          <div>
+            <h1>Manajemen Produk</h1>
+            <p>Pilih game dari daftar, lalu kelola varian harga dan promo.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-open-product-modal>+ Tambah Produk</button>
+          </div>
+        </div>
+
+        <div class="product-game-picker" data-product-game-picker></div>
+
+        <div class="product-panel">
+          <div class="product-head">
+            <div>
+              <h2>Produk — <span data-selected-game-name>Pilih game di atas</span></h2>
+              <p data-product-summary>Kelola varian dan promo untuk game terpilih.</p>
+            </div>
+            <div class="product-actions">
+              <label>
+                Sesuaikan Harga Global
+                <select data-adjust-type>
+                  <option value="increase">Naikan</option>
+                  <option value="decrease">Turunkan</option>
+                </select>
+              </label>
+              <input type="text" placeholder="% atau nominal" data-adjust-value style="width:130px" />
+              <button class="secondary-button" type="button" data-apply-adjust>Terapkan ke Semua</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="product-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Nama Varian</th>
+                  <th>Harga Modal (IDR)</th>
+                  <th>Harga Jual (IDR)</th>
+                  <th>Promo</th>
+                  <th>Harga Promo (IDR)</th>
+                  <th>Status Promo</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody data-product-table></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ PAGE: SALES ═══════════════════ -->
+      <section class="admin-page" data-page="sales">
+        <div class="page-head">
+          <div>
+            <h1>Penjualan</h1>
+            <p>Catat transaksi manual, pantau total penjualan harian/bulanan/tahunan.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-open-sale-modal>+ Catat Penjualan</button>
+          </div>
+        </div>
+
+        <div class="dashboard-stats" data-sales-summary></div>
+
+        <div class="toolbar">
+          <label>
+            Cari Order ID
+            <input type="text" data-sales-orderid-filter placeholder="Contoh: 328278" inputmode="numeric" />
+          </label>
+          <label>
+            Cari Tanggal
+            <input type="date" data-sales-date-filter />
+          </label>
+          <select class="filter-select" data-sales-game-filter>
+            <option value="all">Semua Game</option>
+          </select>
+          <button class="ghost-button" type="button" data-sales-clear-filter>Reset Filter</button>
+        </div>
+
+        <div class="dash-card">
+          <table class="product-table sales-table">
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Order ID</th>
+                <th>Game</th>
+                <th>Nominal</th>
+                <th>Harga</th>
+                <th>Untung</th>
+                <th>Struk</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody data-sales-table-body></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ PAGE: CAPITAL (MODAL) ═══════════════════ -->
+      <section class="admin-page" data-page="capital">
+        <div class="page-head">
+          <div>
+            <h1>Rekap Modal</h1>
+            <p>Total modal yang dikeluarkan dari transaksi yang tercatat di halaman Penjualan.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-stats" data-capital-summary></div>
+
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <h2>Modal per Game</h2>
+          </div>
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th>Game</th>
+                <th>Jumlah Transaksi</th>
+                <th>Total Modal</th>
+                <th>Total Jual</th>
+                <th>Total Untung</th>
+              </tr>
+            </thead>
+            <tbody data-capital-table-body></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ PAGE: SETTINGS ═══════════════════ -->
+      <section class="admin-page" data-page="settings">
+        <div class="page-head">
+          <div>
+            <h1>Pengaturan Website</h1>
+            <p>Jam operasional, maintenance otomatis, kontak, dan banner informasi.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-save-site-settings>💾 Simpan Pengaturan</button>
+          </div>
+        </div>
+
+        <div class="settings-panel">
+          <article class="settings-card">
+            <h2>Jam Operasional Admin</h2>
+            <div class="settings-grid">
+              <label>Jam Buka <input type="time" data-setting="adminHours.open" /></label>
+              <label>Jam Tutup <input type="time" data-setting="adminHours.close" /></label>
+            </div>
+            <label>Disclaimer <textarea rows="2" data-setting="adminHours.disclaimer"></textarea></label>
+            <label class="switch-line danger-line">
+              Tutup Sementara (Manual)
+              <input type="checkbox" data-setting-check="adminHours.manualClosed" />
+            </label>
+            <p class="settings-hint">Kalau ini AKTIF, toko langsung dianggap tutup untuk pembeli <b>kapan pun</b>, tanpa mengubah Jam Buka/Jam Tutup atau hitung mundurnya — cocok untuk tutup dadakan di tengah jam operasional (mis. jam 8-22 tapi mau tutup dari jam 10). Matikan lagi untuk kembali ke jadwal jam operasional normal.</p>
+            <label class="switch-line">
+              Otomatis Offline di Luar Jam
+              <input type="checkbox" data-setting-check="adminHours.autoOffline" />
+            </label>
+            <label class="switch-line">
+              Tampilkan Hitung Mundur Buka
+              <input type="checkbox" data-setting-check="adminHours.showCountdown" />
+            </label>
+            <div class="countdown-preview">
+              <span>Buka Kembali Dalam:</span>
+              <strong data-admin-countdown-preview>00:00:00</strong>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Pemeliharaan Sistem Otomatis</h2>
+            <p class="settings-hint">Jika diaktifkan dan jam sekarang berada dalam rentang waktu, website otomatis masuk mode maintenance seperti halnya jam tutup admin.</p>
+            <label class="switch-line danger-line">
+              Aktifkan Pemeliharaan Sistem
+              <input type="checkbox" data-setting-check="systemMaintenance.enabled" />
+            </label>
+            <div class="settings-grid">
+              <label>Mulai <input type="datetime-local" data-setting="systemMaintenance.start" /></label>
+              <label>Selesai <input type="datetime-local" data-setting="systemMaintenance.end" /></label>
+            </div>
+            <label>Pesan Popup Maintenance <textarea rows="3" data-setting="systemMaintenance.message"></textarea></label>
+            <label class="switch-line">
+              Tampilkan Tombol Hubungi Admin
+              <input type="checkbox" data-setting-check="systemMaintenance.contactUrgent" />
+            </label>
+            <div class="countdown-preview" id="maintenance-countdown-box">
+              <span>Status Maintenance:</span>
+              <strong data-maintenance-status-preview style="font-size:16px">Tidak Aktif</strong>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Kontak & Banner</h2>
+            <div class="settings-grid">
+              <label>Brand Name <input type="text" data-setting="brandName" /></label>
+              <label>WhatsApp Number <input type="text" data-setting="whatsappNumber" /></label>
+              <label>Telegram Username <input type="text" data-setting="telegramUsername" /></label>
+              <label>Last Order (Menit) <input type="number" min="0" data-setting="adminHours.lastOrderMinutes" /></label>
+            </div>
+            <label class="switch-line">
+              Aktifkan Pesan Last Order
+              <input type="checkbox" data-setting-check="adminHours.lastOrderEnabled" />
+            </label>
+            <p class="settings-hint">Pesan Last Order cuma akan tampil ke pembeli saat toko masih online DAN sisa waktu ke Jam Tutup sudah masuk ambang menit di atas. Mis. Jam Tutup 23:00, Last Order 30 menit → pesan baru muncul mulai jam 22:30.</p>
+            <label class="switch-line">
+              Aktifkan Banner Informasi
+              <input type="checkbox" data-setting-check="infoBanner.enabled" />
+            </label>
+            <label>Teks Banner <textarea rows="3" data-setting="infoBanner.message"></textarea></label>
+            <label>Pesan Last Order <textarea rows="2" data-setting="adminHours.lastOrderMessage"></textarea></label>
+          </article>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ═══════ TOAST ═══════ -->
+    <div class="toast-container" data-toast-container></div>
+
+    <!-- ═══════ CONFIRM DIALOG ═══════ -->
+    <div class="modal-overlay" data-confirm-overlay aria-hidden="true">
+      <div class="modal-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="modal-head">
+          <h2 id="confirm-title" data-confirm-title>Konfirmasi</h2>
+        </div>
+        <div class="modal-body">
+          <p data-confirm-message>Apakah Anda yakin?</p>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-confirm-cancel>Batal</button>
+          <button class="delete-button" type="button" data-confirm-ok>Ya, Lanjutkan</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ═══════ GAME MODAL ═══════ -->
+    <div class="modal-overlay" data-game-modal aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="game-modal-title">
+        <header class="modal-head">
+          <h2 id="game-modal-title">Tambah / Edit Game</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <form class="modal-body game-form" data-game-form novalidate>
+          <label>
+            Nama Game <span class="required">*</span>
+            <input type="text" name="name" required placeholder="Contoh: Mobile Legends" />
+            <small class="field-error" data-error="name"></small>
+          </label>
+          <label>
+            Inisial Kartu <span class="required">*</span>
+            <input type="text" name="initials" maxlength="3" required placeholder="ML" />
+            <small class="field-error" data-error="initials"></small>
+          </label>
+          <label>
+            URL Foto Kartu
+            <input type="url" name="imageUrl" placeholder="https://..." />
+            <small class="field-error" data-error="imageUrl"></small>
+          </label>
+          <label>
+            Label Harga (dari...)
+            <input type="text" name="from" placeholder="Mulai Rp10.000" />
+          </label>
+          <label>
+            Warna Kartu A
+            <input type="color" name="colorA" />
+          </label>
+          <label>
+            Warna Kartu B
+            <input type="color" name="colorB" />
+          </label>
+        </form>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-save-game>Simpan Game</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- ═══════ PRODUCT MODAL ═══════ -->
+    <div class="modal-overlay" data-product-modal aria-hidden="true">
+      <section class="modal-card product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+        <header class="modal-head teal-head">
+          <h2 id="product-modal-title">Tambah / Edit Produk</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <form class="modal-body product-form" data-product-form novalidate>
+          <div>
+            <h3><span data-product-game-name></span> — Detail Produk</h3>
+            <label>
+              Nama Produk <span class="required">*</span>
+              <input type="text" name="name" required placeholder="Contoh: 86 Diamond" />
+              <small class="field-error" data-error="pname"></small>
+            </label>
+            <label>
+              Kategori
+              <select name="category">
+                <option value="Diamonds">Diamonds</option>
+                <option value="UC">UC</option>
+                <option value="Points">Points</option>
+                <option value="Membership">Membership</option>
+                <option value="Bundle">Bundle</option>
+              </select>
+            </label>
+            <label>
+              Harga Modal (IDR)
+              <input type="text" name="costPrice" placeholder="Rp0" />
+            </label>
+            <label>
+              Harga Jual <span class="required">*</span>
+              <input type="text" name="sellingPrice" required placeholder="Rp0" />
+              <small class="field-error" data-error="sellingPrice"></small>
+            </label>
+          </div>
+          <div>
+            <label>
+              Harga Promo (opsional)
+              <input type="text" name="promoPrice" placeholder="Kosongkan jika tidak ada" />
+              <small>Aktif jika diisi. Harus lebih kecil dari harga jual.</small>
+              <small class="field-error" data-error="promoPrice"></small>
+            </label>
+            <label>
+              Teks Badge Promo
+              <input type="text" name="promoBadge" placeholder="Hemat 10%" />
+            </label>
+            <div class="toggle-row">
+              <input type="checkbox" name="autoSchedule" id="chk-autoschedule" />
+              <label for="chk-autoschedule" style="font-weight:700">Jadwalkan Promo Otomatis</label>
+            </div>
+            <div class="date-row">
+              <label>Mulai Promo <input type="datetime-local" name="promoStart" /></label>
+              <label>Selesai Promo <input type="datetime-local" name="promoEnd" /></label>
+            </div>
+            <label>
+              Status Produk
+              <select name="status">
+                <option value="normal">Normal (Aktif)</option>
+                <option value="gangguan">Gangguan</option>
+                <option value="soldout">Stok Habis</option>
+              </select>
+            </label>
+          </div>
+        </form>
+        <div class="profit-line" data-profit-line>Kalkulasi Profit: —</div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-save-product>Simpan Produk</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- ═══════ MAINTENANCE MODAL (per game) ═══════ -->
+    <div class="modal-overlay" data-maintenance-modal aria-hidden="true">
+      <section class="modal-card maintenance-modal" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+        <header class="modal-head">
+          <h2 id="maintenance-title">Pengaturan Maintenance</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body maintenance-form">
+          <p class="settings-hint">Atur status tidak aktif untuk game ini. Pilih "Maintenance" jika ini pemeliharaan terjadwal, atau "Gangguan" jika ada masalah/error pada game. Label ini akan muncul apa adanya di halaman utama.</p>
+          <label>
+            Tipe Status
+            <select data-maintenance-type>
+              <option value="maintenance">🔧 Maintenance</option>
+              <option value="gangguan">⚠️ Gangguan</option>
+              <option value="segera-hadir">🕓 Segera Hadir</option>
+            </select>
+          </label>
+          <label class="switch-line">
+            Aktifkan Status Tidak Aktif
+            <input type="checkbox" data-maintenance-enabled />
+          </label>
+          <div class="date-row">
+            <label>Mulai <input type="datetime-local" data-maintenance-start /></label>
+            <label>Selesai <input type="datetime-local" data-maintenance-end /></label>
+          </div>
+          <label>
+            Alasan Maintenance
+            <textarea data-maintenance-reason rows="3" placeholder="Server sedang gangguan..."></textarea>
+            <small class="field-error" data-error="maintenance-reason"></small>
+          </label>
+          <h3 style="margin:8px 0 4px">Notifikasi Telegram</h3>
+          <label class="switch-line">
+            Kirim Notif ke Telegram
+            <input type="checkbox" data-telegram-enabled />
+          </label>
+          <label>Pesan Mulai <textarea rows="3" data-telegram-start></textarea></label>
+          <label>Pesan Selesai <textarea rows="3" data-telegram-end></textarea></label>
+          <label>Telegram Channel/Group ID <input type="text" data-telegram-channel /></label>
+          <div class="preview-box" data-telegram-preview></div>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="maintenance-button" type="button" data-save-maintenance>Simpan Jadwal</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- ═══════ BULK MODAL ═══════ -->
+    <div class="modal-overlay" data-bulk-modal aria-hidden="true">
+      <section class="modal-card bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+        <header class="modal-head">
+          <h2 id="bulk-title">Bulk Maintenance Mode</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body" style="display:grid;gap:14px">
+          <p style="margin:0;color:#5f6672;font-size:14px">Terapkan atau cabut maintenance untuk banyak game sekaligus.</p>
+          <label>
+            Pilih Cakupan
+            <select data-bulk-scope>
+              <option value="all">Semua Game</option>
+              <option value="site">Seluruh Website</option>
+            </select>
+          </label>
+          <label>
+            Pesan Maintenance
+            <textarea rows="4" data-bulk-message>Server sedang gangguan, kembali pukul 18:00 WIB</textarea>
+          </label>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-deactivate-bulk>✅ Aktifkan Kembali Semua</button>
+          <button class="maintenance-button" type="button" data-activate-bulk>⚡ Aktifkan Maintenance</button>
+        </footer>
+      </section>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- ═══════ SALE MODAL ═══════ -->
+    <div class="modal-overlay" data-sale-modal aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title">
+        <header class="modal-head">
+          <h2 id="sale-title">Catat Penjualan</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body">
+          <label>
+            Tanggal Transaksi
+            <input type="date" data-sale-date />
+          </label>
+          <label>
+            Game
+            <select data-sale-game></select>
+          </label>
+          <label>
+            Nominal / Produk
+            <select data-sale-product></select>
+          </label>
+          <div class="settings-grid">
+            <label>
+              Harga Jual (otomatis)
+              <input type="text" data-sale-price readonly />
+            </label>
+            <label>
+              Harga Modal (otomatis)
+              <input type="text" data-sale-cost readonly />
+            </label>
+          </div>
+          <div class="profit-preview">
+            <span>Keuntungan Transaksi Ini</span>
+            <strong data-sale-profit-preview>Rp0</strong>
+          </div>
+          <small class="field-error" data-error="sale-price"></small>
+          <label>
+            ID Tujuan / User ID
+            <input type="text" data-sale-buyer placeholder="Contoh: 123456789" />
+          </label>
+          <label>
+            Nickname (opsional)
+            <input type="text" data-sale-nick placeholder="Contoh: PlayerOne" />
+          </label>
+          <label>
+            Ref ID (opsional)
+            <input type="text" data-sale-ref placeholder="Contoh: TRX-88213" />
+          </label>
+          <label>
+            QR Code — Link/Text (opsional)
+            <input type="text" data-sale-qrtext placeholder="Contoh: link konfirmasi/pembayaran" />
+          </label>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-save-sale>Simpan Transaksi</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- ═══════ RECEIPT (STRUK) MODAL ═══════ -->
+    <div class="modal-overlay" data-receipt-modal aria-hidden="true">
+      <section class="modal-card receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+        <header class="modal-head">
+          <h2 id="receipt-title">Struk Transaksi</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body">
+          <div class="receipt-paper" data-receipt-paper>
+            <div class="receipt-logo-slot" data-receipt-logo-slot></div>
+            <div class="receipt-brand" data-receipt-brand>GlacierStore</div>
+            <p class="receipt-sub">Pasti Murah Pasti Untung</p>
+            <div class="receipt-divider"></div>
+            <div class="receipt-row"><span>Order ID</span><span data-receipt-order-id>-</span></div>
+            <div class="receipt-row"><span>Date/Time</span><span data-receipt-date>-</span></div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-row receipt-product-row">
+              <span data-receipt-product>-</span>
+              <span data-receipt-price>Rp0</span>
+            </div>
+            <br />
+            <div class="receipt-row"><span>ID Tujuan</span><span data-receipt-buyer>-</span></div>
+            <div class="receipt-center" data-receipt-nick-wrap hidden>
+              <div data-receipt-nick></div>
+            </div>
+            <div class="receipt-center" data-receipt-ref-wrap hidden>
+              <div data-receipt-ref></div>
+            </div>
+            <div class="receipt-divider"></div>
+            <div class="receipt-row receipt-total"><span>Total</span><span data-receipt-total>Rp0</span></div>
+            <div class="receipt-qr" data-receipt-qr hidden></div>
+            <p class="receipt-footer">Terima kasih telah berbelanja di <span data-receipt-brand-footer>GlacierStore</span></p>
+          </div>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Tutup</button>
+          <button class="secondary-button" type="button" data-download-receipt-png>Download PNG</button>
+          <button class="primary-button" type="button" data-download-receipt-pdf>Download PDF</button>
+        </footer>
+      </section>
+    </div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>
