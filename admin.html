@@ -696,7 +696,6 @@
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
-        document.getElementById("auth-checking-overlay").remove();
 
         // Baru muat admin.js SETELAH data terbaru benar-benar tersimpan
         // di localStorage. Ini yang menjamin urutannya benar di semua device,
@@ -739,6 +738,14 @@
           script.onerror = reject;
           document.body.appendChild(script);
         });
+
+        // Baru sekarang aman menghilangkan overlay loading — SETELAH admin.js
+        // DAN draft-queue.js benar-benar selesai dimuat & siap. Kalau overlay
+        // dihilangkan lebih awal (sebelum draft-queue.js siap), aksi user yang
+        // sempat dilakukan di celah waktu itu (mis. hapus game) tidak akan
+        // pernah tercatat sebagai draft — perubahan itu diam-diam "hilang"
+        // tanpa pernah terkirim ke Supabase.
+        document.getElementById("auth-checking-overlay").remove();
 
         // Klik menu "Draft Perubahan" harus render ulang halaman & label-nya
         // (navigateTo bawaan admin.js tidak tahu-menahu soal halaman baru ini).

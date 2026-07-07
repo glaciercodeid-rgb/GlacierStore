@@ -40,6 +40,57 @@ function statusLabelFor(gameId, status) {
   return DRAFT_STATUS_LABEL[status] || status;
 }
 
+// Bandingkan game saat ini vs versi tersinkron terakhir, hasilkan ringkasan
+// singkat APA yang berubah (bukan cuma "ada perubahan").
+function describeChanges(gameId) {
+  if (draftAction[gameId] === "delete") {
+    return "Game ini beserta semua produknya akan dihapus dari database.";
+  }
+
+  const snapshotJson = syncedSnapshot[gameId];
+  const game = games.find((g) => g.id === gameId);
+  if (!game) return "";
+  if (!snapshotJson) return "Game baru — belum pernah tersimpan ke database.";
+
+  let oldGame;
+  try { oldGame = JSON.parse(snapshotJson); } catch { oldGame = null; }
+  if (!oldGame) return "Ada perubahan pada game ini.";
+
+  const changes = [];
+  if (oldGame.name !== game.name) changes.push(`Nama: "${oldGame.name}" → "${game.name}"`);
+  if (oldGame.status !== game.status) changes.push(`Status game: ${oldGame.status} → ${game.status}`);
+  if (oldGame.from !== game.from) changes.push(`Label harga: "${oldGame.from}" → "${game.from}"`);
+
+  const oldProducts = {};
+  (oldGame.products || []).forEach((p) => { oldProducts[p.name] = p; });
+  const newProducts = {};
+  (game.products || []).forEach((p) => { newProducts[p.name] = p; });
+
+  Object.keys(newProducts).forEach((name) => {
+    const op = oldProducts[name];
+    const np = newProducts[name];
+    if (!op) { changes.push(`+ Produk baru: "${name}"`); return; }
+    if (op.sellingPrice !== np.sellingPrice) {
+      changes.push(`"${name}": harga ${op.sellingPrice || "-"} → ${np.sellingPrice || "-"}`);
+    }
+    if (Boolean(op.promo) !== Boolean(np.promo) || op.promoPrice !== np.promoPrice) {
+      if (np.promo) changes.push(`"${name}": promo jadi ${np.promoPrice || "-"}`);
+      else if (op.promo) changes.push(`"${name}": promo dinonaktifkan`);
+    }
+    if (op.status !== np.status) changes.push(`"${name}": status ${op.status} → ${np.status}`);
+  });
+  Object.keys(oldProducts).forEach((name) => {
+    if (!newProducts[name]) changes.push(`- Produk dihapus: "${name}"`);
+  });
+
+  if (changes.length === 0) return "Ada perubahan kecil (urutan produk, dll).";
+
+  const MAX_SHOWN = 3;
+  const shown = changes.slice(0, MAX_SHOWN);
+  const remaining = changes.length - shown.length;
+  return shown.join(" · ") + (remaining > 0 ? ` · +${remaining} perubahan lainnya` : "");
+}
+
 function snapshotAllGamesAsSynced() {
   syncedSnapshot = {};
   games.forEach((g) => {
@@ -93,10 +144,15 @@ function getDirtyGameIds() {
   return Object.keys(draftStatus).filter((id) => draftStatus[id] === "dirty");
 }
 
+function getActionableGameIds() {
+  // dirty (belum disimpan) ATAU gagal (perlu di-retry) — dua-duanya butuh perhatian user
+  return Object.keys(draftStatus).filter((id) => draftStatus[id] === "dirty" || draftStatus[id] === "gagal");
+}
+
 function updateDraftBadge() {
   const badge = document.querySelector("[data-draft-badge]");
   if (!badge) return;
-  const count = getDirtyGameIds().length;
+  const count = getActionableGameIds().length;
   badge.textContent = count > 0 ? String(count) : "";
   badge.hidden = count === 0;
 }
@@ -220,7 +276,10 @@ function renderDraftPage() {
 
       return `
         <div class="draft-row" data-draft-row="${gameId}">
-          <div class="draft-row-name">${name}${isDelete ? " <em style=\"color:#b13d3d;font-weight:400\">(akan dihapus)</em>" : ""}</div>
+          <div class="draft-row-name">
+            ${name}${isDelete ? " <em style=\"color:#b13d3d;font-weight:400\">(akan dihapus)</em>" : ""}
+            <div class="draft-row-desc">${describeChanges(gameId)}</div>
+          </div>
           <div class="${statusClass}">${statusLabelFor(gameId, status)}</div>
           <div class="draft-row-actions">
             ${canAct ? `<button class="mini-button" type="button" data-queue-one="${gameId}">${actionLabel}</button>` : ""}
