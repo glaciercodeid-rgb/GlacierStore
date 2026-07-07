@@ -11,10 +11,14 @@
   </head>
   <body>
 
+    <!-- Auth guard: disembunyikan sampai sesi login terverifikasi, supaya isi
+         admin panel tidak sempat "kelihatan sekilas" sebelum redirect ke login.
+         Lihat script auth-guard di bagian bawah file ini. -->
+    <div id="auth-checking-overlay" style="position:fixed;inset:0;z-index:999;background:#f5f7f8;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;color:#5f6672;">
+      Memeriksa sesi login...
+    </div>
+
     <header class="topbar">
-      <button class="rail-toggle" type="button" aria-label="Buka menu admin" aria-expanded="false" data-rail-toggle>
-        <span></span><span></span><span></span>
-      </button>
       <a class="brand" href="index.html" aria-label="GlacierStore website">
         <span>GS</span>
         <strong>GlacierStore</strong>
@@ -22,11 +26,12 @@
       </a>
       <div class="topbar-line"></div>
       <span class="topbar-page-label" data-page-label>Dashboard</span>
+      <button type="button" data-logout-btn style="margin-left:auto;padding:8px 14px;border:1px solid #d8dde2;border-radius:8px;background:#fff;font:inherit;font-size:13px;font-weight:700;color:#b13d3d;cursor:pointer;">
+        Keluar
+      </button>
     </header>
 
-    <div class="rail-overlay" data-rail-overlay></div>
-
-    <aside class="rail" aria-label="Admin navigation" data-rail>
+    <aside class="rail" aria-label="Admin navigation">
       <p class="rail-title">Menu Admin</p>
       <button class="rail-button is-active" type="button" data-nav="dashboard" title="Dashboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -322,11 +327,6 @@
               <label>Telegram Username <input type="text" data-setting="telegramUsername" /></label>
               <label>Last Order (Menit) <input type="number" min="0" data-setting="adminHours.lastOrderMinutes" /></label>
             </div>
-            <label class="switch-line">
-              Aktifkan Pesan Last Order
-              <input type="checkbox" data-setting-check="adminHours.lastOrderEnabled" />
-            </label>
-            <p class="settings-hint">Pesan Last Order cuma akan tampil ke pembeli saat toko masih online DAN sisa waktu ke Jam Tutup sudah masuk ambang menit di atas. Mis. Jam Tutup 23:00, Last Order 30 menit → pesan baru muncul mulai jam 22:30.</p>
             <label class="switch-line">
               Aktifkan Banner Informasi
               <input type="checkbox" data-setting-check="infoBanner.enabled" />
@@ -654,6 +654,33 @@
       </section>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+      // ─── AUTH GUARD ──────────────────────────────────────────
+      // Cek sesi login SEBELUM admin.js jalan. Kalau belum login, langsung
+      // lempar ke login.html. Kalau sudah, baru sembunyikan overlay dan
+      // biarkan admin.js (yang di-load setelah ini) berjalan normal.
+      (async function authGuard() {
+        const { data } = await window.supabaseClient.auth.getSession();
+        if (!data.session) {
+          window.location.replace("login.html");
+          return;
+        }
+        document.getElementById("auth-checking-overlay").remove();
+      })();
+
+      document.querySelector("[data-logout-btn]").addEventListener("click", async () => {
+        await window.supabaseClient.auth.signOut();
+        window.location.replace("login.html");
+      });
+
+      // Kalau sesi berakhir/logout dari tab lain saat admin panel masih terbuka,
+      // otomatis lempar balik ke login supaya tidak ada celah akses tanpa sesi valid.
+      window.supabaseClient.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") window.location.replace("login.html");
+      });
+    </script>
     <script src="admin.js"></script>
   </body>
 </html>
