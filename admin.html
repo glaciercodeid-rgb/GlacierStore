@@ -19,6 +19,11 @@
     </div>
 
     <header class="topbar">
+      <button type="button" class="rail-toggle" data-rail-toggle aria-label="Buka menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
       <a class="brand" href="index.html" aria-label="GlacierStore website">
         <span>GS</span>
         <strong>GlacierStore</strong>
@@ -31,7 +36,9 @@
       </button>
     </header>
 
-    <aside class="rail" aria-label="Admin navigation">
+    <div class="rail-overlay" data-rail-overlay></div>
+
+    <aside class="rail" data-rail aria-label="Admin navigation">
       <p class="rail-title">Menu Admin</p>
       <button class="rail-button is-active" type="button" data-nav="dashboard" title="Dashboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
