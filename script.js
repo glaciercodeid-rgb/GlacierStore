@@ -304,13 +304,16 @@ function renderPrices(animate = true) {
     return;
   }
 
-  const firstAvailableProduct = activeGame.products.find((product) => !isUnavailable(product));
   const selectedStillValid = activeGame.products.some((product) => {
     return formatProductKey(activeGame.id, product.name) === selectedProductKey && !isUnavailable(product);
   });
 
+  // Catatan: SENGAJA tidak auto-pilih produk pertama di sini. Kalau
+  // selectedProductKey sudah tidak valid (game berganti / produk hilang),
+  // cukup dikosongkan — biarkan checkout menampilkan "-" sampai pengguna
+  // benar-benar mengklik salah satu kartu harga.
   if (!selectedStillValid) {
-    selectedProductKey = firstAvailableProduct ? formatProductKey(activeGame.id, firstAvailableProduct.name) : "";
+    selectedProductKey = "";
   }
 
   priceGrid.innerHTML = activeGame.products
@@ -417,7 +420,7 @@ function showContactModal() {
     `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}`
   );
   document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
-  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}`;
+  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
   contactModal.classList.add("is-open");
   contactModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
@@ -427,6 +430,13 @@ function openContactModal() {
   const maintenanceActive = isGlobalMaintenanceActive();
   if (maintenanceActive) {
     showMaintenanceGate();
+    return;
+  }
+  // Pastikan pengguna sudah benar-benar memilih game & nominal top up
+  // sebelum lanjut ke WhatsApp/Telegram — jangan sampai kekirim dengan
+  // data kosong/default kalau memang belum ada yang dipilih.
+  if (!getSelectedProduct()) {
+    alert("Silakan pilih game dan nominal top up terlebih dahulu.");
     return;
   }
   const state = getOperationalState();
