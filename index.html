@@ -161,6 +161,24 @@
     </div>
 
     <script src="data.js"></script>
-    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-bridge.js"></script>
+    <script>
+      // Tarik data terbaru dari Supabase dulu (kalau ada), baru jalankan script.js
+      // seperti biasa. Kalau Supabase gagal/kosong, otomatis fallback ke data
+      // lokal/default — landing page tetap tampil normal.
+      (async function boot() {
+        try {
+          await window.scPullCatalog();
+        } catch (e) {
+          console.warn("Supabase belum siap, pakai data lokal/default:", e);
+        }
+        const s = document.createElement("script");
+        s.src = "script.js";
+        document.body.appendChild(s);
+      })();
+    </script>
   </body>
+
 </html>

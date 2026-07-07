@@ -656,16 +656,23 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
+    <script src="supabase-bridge.js"></script>
     <script>
-      // ─── AUTH GUARD ──────────────────────────────────────────
+      // ─── AUTH GUARD + PULL DATA TERBARU ─────────────────────
       // Cek sesi login SEBELUM admin.js jalan. Kalau belum login, langsung
-      // lempar ke login.html. Kalau sudah, baru sembunyikan overlay dan
-      // biarkan admin.js (yang di-load setelah ini) berjalan normal.
+      // lempar ke login.html. Kalau sudah, tarik data terbaru dari Supabase
+      // ke localStorage (supaya admin.js baca data terbaru, bukan basi),
+      // baru sembunyikan overlay dan biarkan admin.js jalan normal.
       (async function authGuard() {
         const { data } = await window.supabaseClient.auth.getSession();
         if (!data.session) {
           window.location.replace("login.html");
           return;
+        }
+        try {
+          await window.scPullCatalog();
+        } catch (e) {
+          console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
         document.getElementById("auth-checking-overlay").remove();
       })();
@@ -682,5 +689,23 @@
       });
     </script>
     <script src="admin.js"></script>
+    <script>
+      // ─── PUSH KE SUPABASE ────────────────────────────────────
+      // Tempel di atas saveGames/saveSettings bawaan admin.js: fungsi lama
+      // tetap jalan apa adanya (localStorage tetap terisi seperti biasa),
+      // cuma ditambah dorongan async ke Supabase setelahnya. Tidak ada
+      // logic bisnis di admin.js yang diubah/ditulis ulang.
+      const _saveGames = saveGames;
+      saveGames = function () {
+        _saveGames();
+        window.scPushCatalog(games).catch((e) => console.error("Gagal sync games ke Supabase:", e));
+      };
+
+      const _saveSettings = saveSettings;
+      saveSettings = function () {
+        _saveSettings();
+        window.scPushSettings(siteSettings).catch((e) => console.error("Gagal sync settings ke Supabase:", e));
+      };
+    </script>
   </body>
 </html>
