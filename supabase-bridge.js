@@ -124,6 +124,67 @@
     if (error) throw error;
   }
 
+  // ─── ANTRIAN SERIAL untuk push (cegah race condition) ──────────
+  // Masalah sebelumnya: scPushCatalog melakukan "hapus semua produk →
+  // insert ulang semua". Kalau saveGames() dipanggil dua kali berturut-turut
+  // dengan cepat (misal drag-reorder lalu langsung toggle status), DUA proses
+  // push bisa jalan BERSAMAAN dan saling tabrakan — proses kedua bisa
+  // menghapus data yang baru ditulis proses pertama sebelum sempat insert ulang,
+  // membuat produk hilang sementara/permanen.
+  //
+  // Solusinya: setiap panggilan push masuk ke satu antrian yang dijalankan
+  // SATU PER SATU (serial, tidak paralel). Kalau ada beberapa panggilan
+  // menumpuk sebelum antrian sempat jalan, yang benar-benar dikirim ke
+  // Supabase cuma STATE TERAKHIR (yang paling baru) — bukan berkali-kali
+  // dengan data yang sudah usang. Ini disebut pola "coalescing queue".
+  let gamesPushChain = Promise.resolve();
+  let pendingGamesState = null;
+
+  function scPushCatalogSafe(games) {
+    // Simpan snapshot state terbaru. Kalau dipanggil lagi sebelum antrian
+    // sempat jalan, snapshot ini akan DITIMPA oleh yang lebih baru —
+    // otomatis "melompati" state lama yang sudah usang.
+    pendingGamesState = games;
+
+    gamesPushChain = gamesPushChain
+      .then(async () => {
+        // Ambil state terbaru yang tersedia SAAT giliran ini benar-benar jalan,
+        // bukan state saat scPushCatalogSafe() dipanggil.
+        if (pendingGamesState === null) return;
+        const toPush = pendingGamesState;
+        pendingGamesState = null;
+        await scPushCatalog(toPush);
+      })
+      .catch((e) => {
+        console.error("Gagal sync games ke Supabase:", e);
+      });
+
+    return gamesPushChain;
+  }
+
+  let settingsPushChain = Promise.resolve();
+  let pendingSettingsState = null;
+
+  function scPushSettingsSafe(settings) {
+    pendingSettingsState = settings;
+
+    settingsPushChain = settingsPushChain
+      .then(async () => {
+        if (pendingSettingsState === null) return;
+        const toPush = pendingSettingsState;
+        pendingSettingsState = null;
+        await scPushSettings(toPush);
+      })
+      .catch((e) => {
+        console.error("Gagal sync settings ke Supabase:", e);
+      });
+
+    return settingsPushChain;
+  }
+
+  window.scPushCatalogSafe = scPushCatalogSafe;
+  window.scPushSettingsSafe = scPushSettingsSafe;
+
   window.scPullCatalog = scPullCatalog;
   window.scPushCatalog = scPushCatalog;
   window.scPushSettings = scPushSettings;

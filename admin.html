@@ -698,13 +698,13 @@
       const _saveGames = saveGames;
       saveGames = function () {
         _saveGames();
-        window.scPushCatalog(games).catch((e) => console.error("Gagal sync games ke Supabase:", e));
+        window.scPushCatalogSafe(games);
       };
 
       const _saveSettings = saveSettings;
       saveSettings = function () {
         _saveSettings();
-        window.scPushSettings(siteSettings).catch((e) => console.error("Gagal sync settings ke Supabase:", e));
+        window.scPushSettingsSafe(siteSettings);
       };
     </script>
   </body>
