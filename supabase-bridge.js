@@ -241,4 +241,5 @@
   window.scPullCatalog = scPullCatalog;
   window.scPushCatalog = scPushCatalog;
   window.scPushSettings = scPushSettings;
+  window.scPushSettingsSafe = scPushSettingsSafe;
 })();
