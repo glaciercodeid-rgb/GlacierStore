@@ -99,9 +99,10 @@ function normalizeProduct(p, index = 0){
     promo:       Boolean(p.promo || p.promoPrice),
     promoBadge:  p.promoBadge || (p.promo ? "Sale" : ""),
     promoStart:  p.promoStart || "",
-    promoEnd:    p.promoEnd   || "",
-    status:      p.status || "normal",
-    sortOrder:   index,
+    promoEnd:           p.promoEnd   || "",
+    status:             p.status || "normal",
+    _promoAutoSoldout:  Boolean(p._promoAutoSoldout),
+    sortOrder:          index,
   };
 }
 
@@ -1611,6 +1612,56 @@ function checkAutoMaintenance(){
 }
 
 setInterval(checkAutoMaintenance, 10000); // every 10s
+
+// ─── AUTO PROMO CHECK ─────────────────────────
+// Cek promo expired/active setiap 10 detik.
+// Jika ada produk promo expired → set status soldout dan simpan ke localStorage
+// supaya setelah refresh data tetap benar (tidak balik ke scheduled).
+function checkAutoPromo(){
+  const now = new Date();
+  let changed = false;
+
+  games.forEach(g=>{
+    (g.products||[]).forEach(p=>{
+      const hasPromo = p.promo || p.promoPrice;
+      if(!hasPromo) return;
+
+      const start = p.promoStart ? new Date(p.promoStart) : null;
+      const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
+      if(!end) return; // promo manual tanpa jadwal, skip
+
+      const isExpired   = end < now;
+      const isScheduled = start && start > now;
+      const isActive    = !isScheduled && !isExpired;
+
+      // Promo expired → otomatis soldout, tandai dengan flag supaya bisa di-reset
+      if(isExpired && p.status === "normal"){
+        p.status = "soldout";
+        p._promoAutoSoldout = true;
+        changed = true;
+      }
+
+      // Promo aktif kembali (admin perpanjang jadwal) → reset hanya kalau
+      // soldout-nya memang dari auto-expired, bukan dari admin manual.
+      if(isActive && p._promoAutoSoldout && p.status === "soldout"){
+        p.status = "normal";
+        p._promoAutoSoldout = false;
+        changed = true;
+      }
+    });
+  });
+
+  if(changed){
+    saveGames();
+    if(currentPage==="products") renderProductPage();
+  }
+
+  // Re-render tabel promo label (scheduled/active/expired) meski tidak ada perubahan status
+  // supaya label badge terupdate otomatis saat waktu berubah.
+  if(currentPage==="products") renderProductTable();
+}
+
+setInterval(checkAutoPromo, 10000); // every 10s
 
 // ─── INIT ─────────────────────────────────────
 saveGames(); // normalize on boot
