@@ -9,6 +9,34 @@
   const STORAGE_KEY  = window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1";
   const SETTINGS_KEY = window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1";
 
+  // Konversi string datetime lokal (dari <input type="datetime-local">, format "YYYY-MM-DDTHH:mm")
+  // ke ISO string DENGAN offset timezone lokal browser, supaya Supabase (timestamptz)
+  // menyimpan waktu yang benar — bukan diinterpretasikan sebagai UTC.
+  // Contoh input WIB: "2026-07-09T00:05" -> "2026-07-09T00:05:00+07:00"
+  function toLocalISO(v) {
+    if (!v) return null;
+    const d = new Date(v); // browser parse sebagai local time
+    if (isNaN(d)) return null;
+    const off = -d.getTimezoneOffset();
+    const sign = off >= 0 ? "+" : "-";
+    const hh = String(Math.floor(Math.abs(off) / 60)).padStart(2, "0");
+    const mm2 = String(Math.abs(off) % 60).padStart(2, "0");
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T` +
+           `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${hh}:${mm2}`;
+  }
+
+  // Normalisasi datetime dari Supabase (ISO dengan offset) ke "YYYY-MM-DDTHH:mm" local time
+  // supaya getPromoStatus() di script.js membandingkan apples-to-apples.
+  function fromSupabaseDate(v) {
+    if (!v) return "";
+    const d = new Date(v); // Supabase kirim ISO+offset, new Date() parse ke local
+    if (isNaN(d)) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T` +
+           `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   // Ambil data terbaru dari Supabase -> tulis ke localStorage dengan format
   // yang SAMA PERSIS seperti yang dipakai admin.js/script.js selama ini.
   // Kalau Supabase kosong/gagal diakses, localStorage tidak disentuh
@@ -49,8 +77,8 @@
           normal: p.promo ? p.selling_price || "" : "",
           promo: !!p.promo,
           promoBadge: p.promo_badge || "",
-          promoStart: p.promo_start || "",
-          promoEnd: p.promo_end || "",
+          promoStart: fromSupabaseDate(p.promo_start),
+          promoEnd:   fromSupabaseDate(p.promo_end),
           status: p.status || "normal",
           sortOrder: p.sort_order || 0,
         })),
@@ -104,8 +132,8 @@
           promo_price: p.promoPrice || (p.promo ? p.price : "") || "",
           promo: !!p.promo,
           promo_badge: p.promoBadge || "",
-          promo_start: p.promoStart || null,
-          promo_end: p.promoEnd || null,
+          promo_start: toLocalISO(p.promoStart),
+          promo_end:   toLocalISO(p.promoEnd),
           status: p.status || "normal",
           sort_order: i,
         });
@@ -215,8 +243,8 @@
       promo_price: p.promoPrice || (p.promo ? p.price : "") || "",
       promo: !!p.promo,
       promo_badge: p.promoBadge || "",
-      promo_start: p.promoStart || null,
-      promo_end: p.promoEnd || null,
+      promo_start: toLocalISO(p.promoStart),
+      promo_end:   toLocalISO(p.promoEnd),
       status: p.status || "normal",
       sort_order: i,
     }));
