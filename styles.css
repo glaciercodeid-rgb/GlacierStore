@@ -991,6 +991,39 @@ button {
   transition: border-color 130ms ease, transform 130ms ease, background 150ms ease, border-left-width 150ms ease, box-shadow 130ms ease;
 }
 
+/* ─── BERI RUANG BAWAH UNTUK BADGE STATUS ─── */
+
+/* Desktop: tambah padding-bottom supaya badge tidak nutup harga */
+.price-card {
+  padding: 20px 20px 48px; /* ganti dari: 20px 20px 19px */
+}
+
+/* Kalau tidak ada badge (produk normal/available), kembalikan padding normal */
+/* Badge hanya muncul di .is-unavailable, jadi kita target itu saja */
+.price-card:not(.is-unavailable) {
+  padding-bottom: 19px;
+}
+
+/* Mobile ≤600px */
+@media (max-width: 600px) {
+  .price-card {
+    padding: 17px 14px 44px;
+  }
+  .price-card:not(.is-unavailable) {
+    padding-bottom: 14px;
+  }
+}
+
+/* Mobile kecil ≤420px */
+@media (max-width: 420px) {
+  .price-card {
+    padding: 15px 12px 42px;
+  }
+  .price-card:not(.is-unavailable) {
+    padding-bottom: 12px;
+  }
+}
+
 .price-card::after {
   content: "";
   position: absolute;
