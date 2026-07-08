@@ -47,39 +47,15 @@ function mergeSettings(base, extra) {
   };
 }
 
-// Cek status promo produk berdasarkan promoStart & promoEnd.
-// Return: { status: "none"|"scheduled"|"active"|"expired", label: string }
-function getPromoStatus(product) {
-  const hasPromo = product?.promo || product?.promoPrice;
-  if (!hasPromo) return { status: "none", label: "" };
-
-  const now   = new Date();
-  const start = product.promoStart ? new Date(product.promoStart) : null;
-  const end   = product.promoEnd   ? new Date(product.promoEnd)   : null;
-
-  if (start && start > now) return { status: "scheduled", label: "Scheduled" };
-  if (end   && end   < now) return { status: "expired",   label: "EXPIRED PROMO" };
-  return { status: "active", label: product.promoBadge || "PROMO" };
-}
-
-function isPromoExpired(product) {
-  return getPromoStatus(product).status === "expired";
-}
-
 function isUnavailable(item) {
-  // Produk dengan promo expired otomatis dianggap tidak tersedia (Stok Habis)
-  if (item && !item.status?.length && isPromoExpired(item)) return true;
-  if (item && item.status === "normal" && isPromoExpired(item)) return true;
   return item?.status && item.status !== "normal";
 }
 
 function statusText(item, fallback) {
-  if (item?.status === "soldout") return "Stok Habis";
+  if (item?.status === "soldout") return "Stok habis";
   if (item?.status === "maintenance") return "Maintenance";
   if (item?.status === "gangguan") return "Gangguan";
   if (item?.status === "segera-hadir") return "Segera Hadir";
-  // Produk normal tapi promo expired → tampil sebagai Stok Habis di kiri bawah
-  if (isPromoExpired(item)) return "Stok Habis";
   return fallback;
 }
 
@@ -213,6 +189,13 @@ function renderSettingsText() {
   const brandName = settings.brandName || "GlacierStore";
   document.title = `${brandName} - Top Up Game`;
   document.querySelectorAll("[data-brand], [data-brand-inline], [data-brand-footer]").forEach((node) => {
+    // Kalau elemen ini berisi logo gambar, jangan timpa dengan teks polos —
+    // cukup perbarui alt text-nya saja supaya nama brand tetap ikut update.
+    const logoImg = node.querySelector("img");
+    if (logoImg) {
+      logoImg.alt = brandName;
+      return;
+    }
     node.textContent = brandName;
   });
 
@@ -328,63 +311,40 @@ function renderPrices(animate = true) {
     return;
   }
 
+  const firstAvailableProduct = activeGame.products.find((product) => !isUnavailable(product));
   const selectedStillValid = activeGame.products.some((product) => {
     return formatProductKey(activeGame.id, product.name) === selectedProductKey && !isUnavailable(product);
   });
 
-  // Catatan: SENGAJA tidak auto-pilih produk pertama di sini. Kalau
-  // selectedProductKey sudah tidak valid (game berganti / produk hilang),
-  // cukup dikosongkan — biarkan checkout menampilkan "-" sampai pengguna
-  // benar-benar mengklik salah satu kartu harga.
   if (!selectedStillValid) {
-    selectedProductKey = "";
+    selectedProductKey = firstAvailableProduct ? formatProductKey(activeGame.id, firstAvailableProduct.name) : "";
   }
 
   priceGrid.innerHTML = activeGame.products
     .map((product, index) => {
-      const key        = formatProductKey(activeGame.id, product.name);
-      const promoSt    = getPromoStatus(product);
-      const disabled   = isUnavailable(product);
-      const selectedClass   = key === selectedProductKey ? " is-selected" : "";
+      const key = formatProductKey(activeGame.id, product.name);
+      const disabled = isUnavailable(product);
+      const selectedClass = key === selectedProductKey ? " is-selected" : "";
       const unavailableClass = disabled ? " is-unavailable" : "";
-
-      // Badge kanan atas: hanya muncul kalau promo active atau expired
-      // (scheduled tidak ditampilkan ke customer)
-      const promoBadgeHtml = promoSt.status === "active"
-        ? `<span class="promo-badge">${escapeHtml(promoSt.label)}</span>`
-        : promoSt.status === "expired"
-          ? `<span class="promo-badge promo-badge--expired">${escapeHtml(promoSt.label)}</span>`
-          : "";
-
-      // Badge kiri bawah: Stok Habis / Gangguan — hanya kalau produk disabled
-      // Tidak pernah tumpuk dengan badge kanan atas karena posisi CSS berbeda
-      const statusBadgeHtml = disabled
+      const statusBadge = disabled
         ? `<span class="status-badge price-status">${escapeHtml(statusText(product, "Gangguan"))}</span>`
         : "";
-
-      // Tampilan harga:
-      // - Promo active  → coret harga normal, tampil harga promo
-      // - Promo expired → tetap tampilkan harga promo (data tidak dihapus),
-      //                   tapi produk disabled karena expired
-      // - No promo      → harga biasa
-      const hasPromoPrice = product.promoPrice || (product.promo && product.price);
-      const showPromoLayout = promoSt.status === "active" || promoSt.status === "expired";
-      const priceMarkup = showPromoLayout && hasPromoPrice
+      const promoMarkup = product.promo
         ? `
+          <span class="promo-badge">${escapeHtml(product.promoBadge || "PROMO")}</span>
           <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || "")}</p>
-          <p class="price-promo">${escapeHtml(product.promoPrice || product.price)}</p>
+          <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || product.price)}</p>
+          <p class="price-promo">${escapeHtml(product.price)}</p>
         `
         : `
           <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-value">${escapeHtml(product.sellingPrice || product.price)}</p>
+          <p class="price-value">${escapeHtml(product.price)}</p>
         `;
 
       return `
         <button class="price-card${selectedClass}${unavailableClass}" type="button" data-product-key="${escapeHtml(key)}" ${disabled ? "disabled" : ""} style="--stagger: ${index * 35}ms">
-          ${promoBadgeHtml}
-          ${priceMarkup}
-          ${statusBadgeHtml}
+          ${statusBadge}
+          ${promoMarkup}
         </button>
       `;
     })
@@ -464,7 +424,7 @@ function showContactModal() {
     `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}`
   );
   document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
-  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
+  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}`;
   contactModal.classList.add("is-open");
   contactModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
@@ -474,13 +434,6 @@ function openContactModal() {
   const maintenanceActive = isGlobalMaintenanceActive();
   if (maintenanceActive) {
     showMaintenanceGate();
-    return;
-  }
-  // Pastikan pengguna sudah benar-benar memilih game & nominal top up
-  // sebelum lanjut ke WhatsApp/Telegram — jangan sampai kekirim dengan
-  // data kosong/default kalau memang belum ada yang dipilih.
-  if (!getSelectedProduct()) {
-    alert("Silakan pilih game dan nominal top up terlebih dahulu.");
     return;
   }
   const state = getOperationalState();

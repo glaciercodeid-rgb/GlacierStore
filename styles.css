@@ -168,6 +168,29 @@ button {
   transform: rotate(45deg);
 }
 
+.wordmark:has(.wordmark-logo)::before {
+  display: none;
+}
+
+.wordmark-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.footer-brand .wordmark-logo {
+  height: 28px;
+}
+
+.guide-image {
+  display: block;
+  width: 100%;
+  max-width: 1100px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 16px;
+}
+
 .desktop-nav {
   display: flex;
   align-items: center;
@@ -858,7 +881,7 @@ button {
 
 .status-badge {
   position: absolute;
-  bottom: 10px;
+  top: 10px;
   left: 10px;
   z-index: 3;
   display: inline-flex;
@@ -982,46 +1005,13 @@ button {
   border: 1px solid var(--line);
   border-left-width: 1px;
   border-radius: 14px;
-  padding: 20px 20px 48px;
+  padding: 20px 20px 19px;
   overflow: hidden;
   cursor: pointer;
   opacity: 0;
   transform: translateY(14px);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.74) inset;
   transition: border-color 130ms ease, transform 130ms ease, background 150ms ease, border-left-width 150ms ease, box-shadow 130ms ease;
-}
-
-/* ─── BERI RUANG BAWAH UNTUK BADGE STATUS ─── */
-
-/* Desktop: tambah padding-bottom supaya badge tidak nutup harga */
-.price-card {
-  padding: 20px 20px 48px; /* ganti dari: 20px 20px 19px */
-}
-
-/* Kalau tidak ada badge (produk normal/available), kembalikan padding normal */
-/* Badge hanya muncul di .is-unavailable, jadi kita target itu saja */
-.price-card:not(.is-unavailable) {
-  padding-bottom: 19px;
-}
-
-/* Mobile ≤600px */
-@media (max-width: 600px) {
-  .price-card {
-    padding: 17px 14px 44px;
-  }
-  .price-card:not(.is-unavailable) {
-    padding-bottom: 14px;
-  }
-}
-
-/* Mobile kecil ≤420px */
-@media (max-width: 420px) {
-  .price-card {
-    padding: 15px 12px 42px;
-  }
-  .price-card:not(.is-unavailable) {
-    padding-bottom: 12px;
-  }
 }
 
 .price-card::after {
@@ -1126,14 +1116,9 @@ button {
 }
 
 .price-status {
+  left: auto;
+  right: 10px;
   background: #69717d;
-}
-
-.promo-badge--expired {
-  background: #4a4f5a;
-  color: #c8cad0;
-  font-size: 9px;
-  letter-spacing: 0.05em;
 }
 
 .empty-state {
@@ -1858,7 +1843,7 @@ button {
   }
 
   .price-card {
-    padding: 17px 14px 44px;
+    padding: 17px 14px;
   }
 
   .price-card h3 {
@@ -1939,7 +1924,7 @@ button {
   }
 
   .price-card {
-    padding: 15px 12px 42px;
+    padding: 15px 12px;
   }
 
   .price-value,
