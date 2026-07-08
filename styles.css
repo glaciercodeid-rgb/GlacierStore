@@ -123,13 +123,13 @@ button {
   inset: var(--banner-h, 30px) 0 auto;
   z-index: 50;
   height: 64px;
-  background: rgba(255, 253, 247, 0.96);
+  background: rgba(242, 238, 228, 0.96);
   border-bottom: 1px solid var(--line);
   transition: background 140ms ease, backdrop-filter 140ms ease, border-color 140ms ease, top 120ms ease;
 }
 
 .site-header.is-scrolled {
-  background: rgba(255, 253, 247, 0.9);
+  background: rgba(242, 238, 228, 0.9);
   border-color: rgba(16, 19, 28, 0.14);
   backdrop-filter: blur(8px);
 }
