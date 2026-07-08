@@ -1093,8 +1093,14 @@ button {
 }
 
 .price-status {
-  left: auto;
-  right: 10px;
+  top: auto;
+  bottom: 10px;
+  left: 10px;
+  right: auto;
+  background: #69717d;
+}
+
+.promo-badge.is-expired {
   background: #69717d;
 }
 
