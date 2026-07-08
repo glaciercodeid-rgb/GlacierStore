@@ -811,7 +811,7 @@ function getPromoStatus(p){
   const start = p.promoStart ? new Date(p.promoStart) : null;
   const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
   if(start && start>now) return { label:"Scheduled", cls:"status-scheduled" };
-  if(end   && end<now)   return { label:"Expired",   cls:"status-expired"   };
+  if(end   && end<now)   return { label:"Expired Promo", cls:"status-expired" };
   return { label:"Active", cls:"status-active" };
 }
 

@@ -47,15 +47,39 @@ function mergeSettings(base, extra) {
   };
 }
 
+// Cek status promo produk berdasarkan promoStart & promoEnd.
+// Return: { status: "none"|"scheduled"|"active"|"expired", label: string }
+function getPromoStatus(product) {
+  const hasPromo = product?.promo || product?.promoPrice;
+  if (!hasPromo) return { status: "none", label: "" };
+
+  const now   = new Date();
+  const start = product.promoStart ? new Date(product.promoStart) : null;
+  const end   = product.promoEnd   ? new Date(product.promoEnd)   : null;
+
+  if (start && start > now) return { status: "scheduled", label: "Scheduled" };
+  if (end   && end   < now) return { status: "expired",   label: "EXPIRED PROMO" };
+  return { status: "active", label: product.promoBadge || "PROMO" };
+}
+
+function isPromoExpired(product) {
+  return getPromoStatus(product).status === "expired";
+}
+
 function isUnavailable(item) {
+  // Produk dengan promo expired otomatis dianggap tidak tersedia (Stok Habis)
+  if (item && !item.status?.length && isPromoExpired(item)) return true;
+  if (item && item.status === "normal" && isPromoExpired(item)) return true;
   return item?.status && item.status !== "normal";
 }
 
 function statusText(item, fallback) {
-  if (item?.status === "soldout") return "Stok habis";
+  if (item?.status === "soldout") return "Stok Habis";
   if (item?.status === "maintenance") return "Maintenance";
   if (item?.status === "gangguan") return "Gangguan";
   if (item?.status === "segera-hadir") return "Segera Hadir";
+  // Produk normal tapi promo expired → tampil sebagai Stok Habis di kiri bawah
+  if (isPromoExpired(item)) return "Stok Habis";
   return fallback;
 }
 
@@ -318,29 +342,49 @@ function renderPrices(animate = true) {
 
   priceGrid.innerHTML = activeGame.products
     .map((product, index) => {
-      const key = formatProductKey(activeGame.id, product.name);
-      const disabled = isUnavailable(product);
-      const selectedClass = key === selectedProductKey ? " is-selected" : "";
+      const key        = formatProductKey(activeGame.id, product.name);
+      const promoSt    = getPromoStatus(product);
+      const disabled   = isUnavailable(product);
+      const selectedClass   = key === selectedProductKey ? " is-selected" : "";
       const unavailableClass = disabled ? " is-unavailable" : "";
-      const statusBadge = disabled
+
+      // Badge kanan atas: hanya muncul kalau promo active atau expired
+      // (scheduled tidak ditampilkan ke customer)
+      const promoBadgeHtml = promoSt.status === "active"
+        ? `<span class="promo-badge">${escapeHtml(promoSt.label)}</span>`
+        : promoSt.status === "expired"
+          ? `<span class="promo-badge promo-badge--expired">${escapeHtml(promoSt.label)}</span>`
+          : "";
+
+      // Badge kiri bawah: Stok Habis / Gangguan — hanya kalau produk disabled
+      // Tidak pernah tumpuk dengan badge kanan atas karena posisi CSS berbeda
+      const statusBadgeHtml = disabled
         ? `<span class="status-badge price-status">${escapeHtml(statusText(product, "Gangguan"))}</span>`
         : "";
-      const promoMarkup = product.promo
+
+      // Tampilan harga:
+      // - Promo active  → coret harga normal, tampil harga promo
+      // - Promo expired → tetap tampilkan harga promo (data tidak dihapus),
+      //                   tapi produk disabled karena expired
+      // - No promo      → harga biasa
+      const hasPromoPrice = product.promoPrice || (product.promo && product.price);
+      const showPromoLayout = promoSt.status === "active" || promoSt.status === "expired";
+      const priceMarkup = showPromoLayout && hasPromoPrice
         ? `
-          <span class="promo-badge">${escapeHtml(product.promoBadge || "PROMO")}</span>
           <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || product.price)}</p>
-          <p class="price-promo">${escapeHtml(product.price)}</p>
+          <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || "")}</p>
+          <p class="price-promo">${escapeHtml(product.promoPrice || product.price)}</p>
         `
         : `
           <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-value">${escapeHtml(product.price)}</p>
+          <p class="price-value">${escapeHtml(product.sellingPrice || product.price)}</p>
         `;
 
       return `
         <button class="price-card${selectedClass}${unavailableClass}" type="button" data-product-key="${escapeHtml(key)}" ${disabled ? "disabled" : ""} style="--stagger: ${index * 35}ms">
-          ${statusBadge}
-          ${promoMarkup}
+          ${promoBadgeHtml}
+          ${priceMarkup}
+          ${statusBadgeHtml}
         </button>
       `;
     })
