@@ -411,22 +411,6 @@ function switchGame(gameId, card) {
       document.querySelectorAll(".price-card").forEach((item) => item.classList.add("is-visible"));
     }, 30);
   }, 150);
-
-  updateZoneIdVisibility();
-}
-
-// Zone ID cuma dibutuhkan untuk game tertentu (saat ini: Mobile Legends).
-// Field-nya disembunyikan total (bukan cuma dikosongkan) untuk game lain,
-// supaya pembeli tidak bingung diminta isi sesuatu yang tidak relevan.
-function updateZoneIdVisibility() {
-  const field = document.querySelector("[data-zone-id-field]");
-  if (!field) return;
-  const needsZoneId = activeGameId === "mobile-legends";
-  field.hidden = !needsZoneId;
-  if (!needsZoneId) {
-    const input = document.querySelector("[data-zone-id]");
-    if (input) input.value = "";
-  }
 }
 
 // Menampilkan popup pilihan kontak (WhatsApp / Telegram).
@@ -436,12 +420,8 @@ function showContactModal() {
   const game = getActiveGame();
   const product = getSelectedProduct();
   const userId = document.querySelector("[data-user-id]").value.trim() || "-";
-  const zoneIdField = document.querySelector("[data-zone-id-field]");
-  const showsZoneId = zoneIdField && !zoneIdField.hidden;
-  const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "-") : "";
-  const zoneLine = showsZoneId ? `\nZone ID: ${zoneId}` : "";
   const message = encodeURIComponent(
-    `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}${zoneLine}`
+    `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}`
   );
   document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
   document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}`;
@@ -486,11 +466,6 @@ function openGate(title, message, untilDate, locked, options = {}) {
   document.querySelector("[data-gate-title]").textContent = title;
   document.querySelector("[data-gate-message]").textContent = message;
   document.querySelector("[data-gate-modal]").classList.toggle("is-locked-gate", locked);
-  // Default: tombol "Hubungi Admin" selalu tampil. Khusus popup maintenance,
-  // showMaintenanceGate() akan menyembunyikannya lagi kalau admin mematikan
-  // opsi "Tampilkan Tombol Hubungi Admin" di pengaturan.
-  const urgentBtn = document.querySelector("[data-urgent-contact]");
-  if (urgentBtn) urgentBtn.hidden = false;
   gateModal.classList.add("is-open");
   gateModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
@@ -522,11 +497,6 @@ function closeGate() {
 function showMaintenanceGate() {
   const maintenance = settings.systemMaintenance || {};
   openGate("Kami sedang melakukan pemeliharaan sistem", maintenance.message || "Website sedang dalam pemeliharaan.", maintenance.end, true);
-  // Tombol "Hubungi Admin" di popup ini cuma boleh muncul kalau admin
-  // mengaktifkan "Tampilkan Tombol Hubungi Admin" di pengaturan maintenance.
-  // Untuk popup gate lain (offline biasa), tombol ini selalu tetap tampil.
-  const urgentBtn = document.querySelector("[data-urgent-contact]");
-  if (urgentBtn) urgentBtn.hidden = maintenance.contactUrgent === false;
 }
 
 function openDrawer() {
@@ -646,6 +616,5 @@ renderSettingsText();
 renderOperationalStatus();
 renderGames();
 renderPrices(true);
-updateZoneIdVisibility();
 if (isGlobalMaintenanceActive()) showMaintenanceGate();
 startTicker();
