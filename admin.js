@@ -1615,13 +1615,15 @@ setInterval(checkAutoMaintenance, 10000); // every 10s
 
 // ─── AUTO PROMO CHECK ─────────────────────────
 // Cek promo expired/active setiap 10 detik.
-// Jika ada produk promo expired → set status soldout dan simpan ke localStorage
-// supaya setelah refresh data tetap benar (tidak balik ke scheduled).
+// Jika ada produk promo expired → set status soldout, simpan ke localStorage,
+// DAN langsung push ke Supabase (bypass draft queue) supaya setelah refresh
+// data tidak balik ke semula.
 function checkAutoPromo(){
   const now = new Date();
-  let changed = false;
+  const affectedGames = [];
 
   games.forEach(g=>{
+    let gameChanged = false;
     (g.products||[]).forEach(p=>{
       const hasPromo = p.promo || p.promoPrice;
       if(!hasPromo) return;
@@ -1638,7 +1640,7 @@ function checkAutoPromo(){
       if(isExpired && p.status === "normal"){
         p.status = "soldout";
         p._promoAutoSoldout = true;
-        changed = true;
+        gameChanged = true;
       }
 
       // Promo aktif kembali (admin perpanjang jadwal) → reset hanya kalau
@@ -1646,13 +1648,30 @@ function checkAutoPromo(){
       if(isActive && p._promoAutoSoldout && p.status === "soldout"){
         p.status = "normal";
         p._promoAutoSoldout = false;
-        changed = true;
+        gameChanged = true;
       }
     });
+    if(gameChanged) affectedGames.push(g);
   });
 
-  if(changed){
+  if(affectedGames.length){
+    // Simpan ke localStorage
     saveGames();
+    // Push langsung ke Supabase (bypass draft queue) — ini perubahan otomatis
+    // sistem, bukan edit admin, jadi tidak perlu lewat "Draft Perubahan".
+    // Setelah push, update syncedSnapshot di draft-queue supaya perubahan ini
+    // tidak muncul sebagai "Belum Disimpan" di halaman Draft.
+    if(window.scPushSingleGame){
+      affectedGames.forEach(async g=>{
+        try{
+          await window.scPushSingleGame(g);
+          // Update snapshot supaya draft-queue tidak mendeteksi ini sebagai dirty
+          if(window.GlacierDraft) window.GlacierDraft.snapshotAllGamesAsSynced();
+        }catch(e){
+          console.warn("checkAutoPromo: gagal push ke Supabase, akan dicoba interval berikutnya:", e);
+        }
+      });
+    }
     if(currentPage==="products") renderProductPage();
   }
 
