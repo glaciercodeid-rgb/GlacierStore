@@ -63,6 +63,13 @@ function isComingSoon(item) {
   return item?.status === "segera-hadir";
 }
 
+function getPromoStatus(product) {
+  if (!product.promo && !product.promoPrice) return "none";
+  const end = product.promoEnd ? new Date(product.promoEnd) : null;
+  if (end && new Date() > end) return "expired";
+  return "active";
+}
+
 function minutesFromTime(value) {
   const [hour, minute] = String(value || "00:00").split(":").map(Number);
   return (hour || 0) * 60 + (minute || 0);
@@ -305,8 +312,12 @@ function renderPrices(animate = true) {
   }
 
   const selectedStillValid = activeGame.products.some((product) => {
-    return formatProductKey(activeGame.id, product.name) === selectedProductKey && !isUnavailable(product);
-  });
+  return (
+    formatProductKey(activeGame.id, product.name) === selectedProductKey &&
+    !isUnavailable(product) &&
+    getPromoStatus(product) !== "expired"
+  );
+});
 
   // Catatan: SENGAJA tidak auto-pilih produk pertama di sini. Kalau
   // selectedProductKey sudah tidak valid (game berganti / produk hilang),
@@ -318,24 +329,27 @@ function renderPrices(animate = true) {
 
   priceGrid.innerHTML = activeGame.products
     .map((product, index) => {
-      const key = formatProductKey(activeGame.id, product.name);
-      const disabled = isUnavailable(product);
-      const selectedClass = key === selectedProductKey ? " is-selected" : "";
-      const unavailableClass = disabled ? " is-unavailable" : "";
-      const statusBadge = disabled
-        ? `<span class="status-badge price-status">${escapeHtml(statusText(product, "Gangguan"))}</span>`
-        : "";
-      const promoMarkup = product.promo
-        ? `
-          <span class="promo-badge">${escapeHtml(product.promoBadge || "PROMO")}</span>
-          <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || product.price)}</p>
-          <p class="price-promo">${escapeHtml(product.price)}</p>
-        `
-        : `
-          <h3>${escapeHtml(product.name)}</h3>
-          <p class="price-value">${escapeHtml(product.price)}</p>
-        `;
+      const promoStatus = getPromoStatus(product);
+const isExpiredPromo = promoStatus === "expired";
+const disabled = isUnavailable(product) || isExpiredPromo;
+const selectedClass = key === selectedProductKey ? " is-selected" : "";
+const unavailableClass = disabled ? " is-unavailable" : "";
+// Stok Habis / Gangguan → kiri bawah (hanya untuk status produk, bukan expired promo)
+const statusBadge = isUnavailable(product)
+  ? `<span class="status-badge price-status">${escapeHtml(statusText(product, "Gangguan"))}</span>`
+  : "";
+// PROMO / EXPIRED PROMO → kanan atas
+const promoMarkup = product.promo
+  ? `
+    <span class="promo-badge${isExpiredPromo ? " is-expired" : ""}">${isExpiredPromo ? "EXPIRED PROMO" : escapeHtml(product.promoBadge || "PROMO")}</span>
+    <h3>${escapeHtml(product.name)}</h3>
+    <p class="price-normal">${escapeHtml(product.normal || product.sellingPrice || product.price)}</p>
+    <p class="price-promo">${escapeHtml(product.price)}</p>
+  `
+  : `
+    <h3>${escapeHtml(product.name)}</h3>
+    <p class="price-value">${escapeHtml(product.price)}</p>
+  `;
 
       return `
         <button class="price-card${selectedClass}${unavailableClass}" type="button" data-product-key="${escapeHtml(key)}" ${disabled ? "disabled" : ""} style="--stagger: ${index * 35}ms">
