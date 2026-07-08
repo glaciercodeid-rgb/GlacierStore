@@ -9,7 +9,6 @@ window.GLACIERCODE_DEFAULT_SETTINGS = {
     open: "08:00",
     close: "22:00",
     autoOffline: true,
-    manualClosed: false,
     showCountdown: true,
     disclaimer: "Jam Operasional bisa berubah sewaktu waktu",
     lastOrderEnabled: true,

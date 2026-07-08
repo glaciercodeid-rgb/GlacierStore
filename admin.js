@@ -28,12 +28,11 @@ function initials(v){
 function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
 function formatIdr(v){ return `Rp${(Number(v)||0).toLocaleString("id-ID")}`; }
 
-// Label status game: "maintenance", "gangguan", dan "segera-hadir" adalah status
-// terpisah (masing-masing tampil apa adanya di halaman utama), tanpa batasan jumlah game.
+// Label status game: "maintenance" dan "gangguan" adalah dua status terpisah
+// (masing-masing tampil apa adanya di halaman utama), tanpa batasan jumlah game.
 function gameStatusLabel(status){
   if(status==="gangguan") return "Gangguan";
   if(status==="maintenance") return "Maintenance";
-  if(status==="segera-hadir") return "Segera Hadir";
   return "Aktif";
 }
 
@@ -99,10 +98,9 @@ function normalizeProduct(p, index = 0){
     promo:       Boolean(p.promo || p.promoPrice),
     promoBadge:  p.promoBadge || (p.promo ? "Sale" : ""),
     promoStart:  p.promoStart || "",
-    promoEnd:           p.promoEnd   || "",
-    status:             p.status || "normal",
-    _promoAutoSoldout:  Boolean(p._promoAutoSoldout),
-    sortOrder:          index,
+    promoEnd:    p.promoEnd   || "",
+    status:      p.status || "normal",
+    sortOrder:   index,
   };
 }
 
@@ -230,19 +228,11 @@ function toast(message, type = "success"){
 }
 
 // ─── CONFIRM DIALOG ──────────────────────────
-// `message` bisa berupa string biasa (ditampilkan sebagai teks), atau array
-// of string (ditampilkan sebagai daftar ringkasan perubahan, mis. hasil dari
-// buildDiffSummary()).
 function confirm(title, message){
   return new Promise(resolve=>{
     const overlay = document.querySelector("[data-confirm-overlay]");
-    const messageEl = document.querySelector("[data-confirm-message]");
-    document.querySelector("[data-confirm-title]").textContent = title;
-    if(Array.isArray(message)){
-      messageEl.innerHTML = `<ul class="confirm-diff-list">${message.map(line=>`<li>${line}</li>`).join("")}</ul>`;
-    } else {
-      messageEl.textContent = message;
-    }
+    document.querySelector("[data-confirm-title]").textContent   = title;
+    document.querySelector("[data-confirm-message]").textContent = message;
     overlay.classList.add("is-open");
     overlay.setAttribute("aria-hidden","false");
 
@@ -284,7 +274,6 @@ function navigateTo(page){
   if(page==="sales")     renderSalesPage();
   if(page==="capital")   renderCapitalPage();
   if(page==="settings")  renderSettingsForm();
-  closeRailDrawer();
 }
 
 document.querySelectorAll("[data-nav]").forEach(btn=>{
@@ -294,32 +283,6 @@ document.querySelectorAll("[data-nav]").forEach(btn=>{
 document.querySelectorAll("[data-nav-to]").forEach(btn=>{
   btn.addEventListener("click",()=> navigateTo(btn.dataset.navTo));
 });
-
-// ─── SIDEBAR MOBILE (drawer) ─────────────────
-// Di layar sempit (mobile), sidebar (.rail) disembunyikan di luar layar lewat
-// CSS dan baru digeser masuk saat class "is-open" ditambahkan. Ini yang
-// menggantikan perilaku lama "sidebar hilang total tanpa cara buka lagi".
-const railEl        = document.querySelector("[data-rail]");
-const railOverlayEl = document.querySelector("[data-rail-overlay]");
-const railToggleEl  = document.querySelector("[data-rail-toggle]");
-
-function openRailDrawer(){
-  railEl?.classList.add("is-open");
-  railOverlayEl?.classList.add("is-open");
-  railToggleEl?.setAttribute("aria-expanded","true");
-}
-
-function closeRailDrawer(){
-  railEl?.classList.remove("is-open");
-  railOverlayEl?.classList.remove("is-open");
-  railToggleEl?.setAttribute("aria-expanded","false");
-}
-
-railToggleEl?.addEventListener("click", ()=>{
-  const isOpen = railEl?.classList.contains("is-open");
-  if(isOpen) closeRailDrawer(); else openRailDrawer();
-});
-railOverlayEl?.addEventListener("click", closeRailDrawer);
 
 // ─── MODALS ──────────────────────────────────
 function openModal(modal){
@@ -444,7 +407,6 @@ document.querySelectorAll("[data-setting],[data-setting-check]").forEach(f=>{
 function updateAdminCountdownPreview(){
   const open  = getNestedSetting(siteSettings,"adminHours.open")  || "08:00";
   const close = getNestedSetting(siteSettings,"adminHours.close") || "22:00";
-  const manualClosed = Boolean(getNestedSetting(siteSettings,"adminHours.manualClosed"));
   const now   = new Date();
   const openMins  = minutesFromTime(open);
   const closeMins = minutesFromTime(close);
@@ -458,12 +420,7 @@ function updateAdminCountdownPreview(){
   nextOpen.setHours(Number(open.slice(0,2)), Number(open.slice(3,5)), 0, 0);
   if(online || curMins >= openMins) nextOpen.setDate(nextOpen.getDate()+1);
   const el = document.querySelector("[data-admin-countdown-preview]");
-  if(!el) return;
-  if(manualClosed){
-    el.textContent = "🔒 Ditutup Manual (jam tetap berjalan seperti biasa)";
-  } else {
-    el.textContent = online ? "Sedang Buka ✓" : formatDuration(nextOpen - now);
-  }
+  if(el) el.textContent = online ? "Sedang Buka ✓" : formatDuration(nextOpen - now);
 }
 
 // ─── MAINTENANCE STATUS PREVIEW ──────────────
@@ -530,19 +487,15 @@ function renderDashboard(){
   const curMins = now.getHours()*60+now.getMinutes();
   const overnight = closeMins<=openMins;
   const online = overnight ? curMins>=openMins||curMins<closeMins : curMins>=openMins&&curMins<closeMins;
-  // Manual override: kalau admin tutup manual, toko langsung dianggap tutup
-  // TANPA mengubah jam operasional atau hitung mundurnya sama sekali.
-  const shouldBeOnline = !h.manualClosed && (!h.autoOffline || online);
+  const shouldBeOnline = !h.autoOffline || online;
 
   const nextOpen = new Date(now);
   nextOpen.setHours(Number(open.slice(0,2)), Number(open.slice(3,5)), 0, 0);
   if(online || curMins>=openMins) nextOpen.setDate(nextOpen.getDate()+1);
 
-  document.querySelector("[data-dash-operational]").innerHTML = h.manualClosed
-    ? `<div class="live-badge is-offline">🔒 Tutup Manual — jam operasional tetap ${open} s/d ${close}</div>`
-    : shouldBeOnline
-      ? `<div class="live-badge is-online">🟢 Online — ${open} s/d ${close}</div>`
-      : `<div class="live-badge is-offline">🔴 Offline — buka kembali ${formatDuration(nextOpen-now)}</div>`;
+  document.querySelector("[data-dash-operational]").innerHTML = shouldBeOnline
+    ? `<div class="live-badge is-online">🟢 Online — ${open} s/d ${close}</div>`
+    : `<div class="live-badge is-offline">🔴 Offline — buka kembali ${formatDuration(nextOpen-now)}</div>`;
 
   // Maintenance status
   const mInfo = getMaintenanceCountdown();
@@ -636,9 +589,6 @@ gameGrid?.addEventListener("click", async e=>{
     const next = g.status==="normal" ? "maintenance" : "normal";
     if(next==="maintenance"){
       const ok = await confirm("Aktifkan Maintenance", `Masukkan "${g.name}" ke mode maintenance?`);
-      if(!ok) return;
-    } else {
-      const ok = await confirm("Normalkan Kembali", `Kembalikan "${g.name}" ke status Aktif (Normal)?`);
       if(!ok) return;
     }
     g.status = next;
@@ -812,7 +762,7 @@ function getPromoStatus(p){
   const start = p.promoStart ? new Date(p.promoStart) : null;
   const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
   if(start && start>now) return { label:"Scheduled", cls:"status-scheduled" };
-  if(end   && end<now)   return { label:"Expired Promo", cls:"status-expired" };
+  if(end   && end<now)   return { label:"Expired",   cls:"status-expired"   };
   return { label:"Active", cls:"status-active" };
 }
 
@@ -1053,7 +1003,7 @@ function openMaintenanceEditor(gameId){
   maintenanceGameId = gameId;
   const m = g.maintenance || {};
   document.querySelector("#maintenance-title").textContent = `Status — ${g.name}`;
-  document.querySelector("[data-maintenance-type]").value      = (g.status==="gangguan"||g.status==="maintenance"||g.status==="segera-hadir") ? g.status : (m.type||"maintenance");
+  document.querySelector("[data-maintenance-type]").value      = (g.status==="gangguan"||g.status==="maintenance") ? g.status : (m.type||"maintenance");
   document.querySelector("[data-maintenance-enabled]").checked = g.status!=="normal" || Boolean(m.enabled);
   const scheduleStillValid = m.end && new Date(m.end) > new Date();
   document.querySelector("[data-maintenance-start]").value    = scheduleStillValid ? toDatetimeInput(m.start) : "";
@@ -1068,32 +1018,14 @@ function openMaintenanceEditor(gameId){
   openModal(maintenanceModal);
 }
 
-async function saveMaintenance(){
+function saveMaintenance(){
   const g = games.find(x=>x.id===maintenanceGameId);
   if(!g) return;
   if(!validateMaintenanceForm()) return;
 
   const enabled = document.querySelector("[data-maintenance-enabled]").checked;
-  const typeRaw = document.querySelector("[data-maintenance-type]").value;
-  const type    = (typeRaw==="gangguan"||typeRaw==="segera-hadir") ? typeRaw : "maintenance";
-  const newStatus = enabled ? type : "normal";
-
-  // Ringkasan perubahan untuk popup konfirmasi
-  const oldLabel = gameStatusLabel(g.status);
-  const newLabel = gameStatusLabel(newStatus);
-  if(oldLabel === newLabel){
-    // Status levelnya sama, tapi mungkin jadwal/pesan berubah — tetap minta konfirmasi sederhana.
-    const ok = await confirm("Konfirmasi Perubahan", [`Simpan pengaturan status untuk <b>${esc(g.name)}</b>?`]);
-    if(!ok) return;
-  } else {
-    const ok = await confirm("Konfirmasi Perubahan Status", [
-      `Game: <b>${esc(g.name)}</b>`,
-      `Status: <b>${esc(oldLabel)}</b> → <b>${esc(newLabel)}</b>`,
-    ]);
-    if(!ok) return;
-  }
-
-  g.status = newStatus;
+  const type    = document.querySelector("[data-maintenance-type]").value === "gangguan" ? "gangguan" : "maintenance";
+  g.status = enabled ? type : "normal";
   let start = document.querySelector("[data-maintenance-start]").value;
   let end   = document.querySelector("[data-maintenance-end]").value;
   // Kalau jam selesai yang terisi sudah lewat, itu bukan jadwal yang masih berlaku —
@@ -1612,75 +1544,6 @@ function checkAutoMaintenance(){
 }
 
 setInterval(checkAutoMaintenance, 10000); // every 10s
-
-// ─── AUTO PROMO CHECK ─────────────────────────
-// Cek promo expired/active setiap 10 detik.
-// Jika ada produk promo expired → set status soldout, simpan ke localStorage,
-// DAN langsung push ke Supabase (bypass draft queue) supaya setelah refresh
-// data tidak balik ke semula.
-function checkAutoPromo(){
-  const now = new Date();
-  const affectedGames = [];
-
-  games.forEach(g=>{
-    let gameChanged = false;
-    (g.products||[]).forEach(p=>{
-      const hasPromo = p.promo || p.promoPrice;
-      if(!hasPromo) return;
-
-      const start = p.promoStart ? new Date(p.promoStart) : null;
-      const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
-      if(!end) return; // promo manual tanpa jadwal, skip
-
-      const isExpired   = end < now;
-      const isScheduled = start && start > now;
-      const isActive    = !isScheduled && !isExpired;
-
-      // Promo expired → otomatis soldout, tandai dengan flag supaya bisa di-reset
-      if(isExpired && p.status === "normal"){
-        p.status = "soldout";
-        p._promoAutoSoldout = true;
-        gameChanged = true;
-      }
-
-      // Promo aktif kembali (admin perpanjang jadwal) → reset hanya kalau
-      // soldout-nya memang dari auto-expired, bukan dari admin manual.
-      if(isActive && p._promoAutoSoldout && p.status === "soldout"){
-        p.status = "normal";
-        p._promoAutoSoldout = false;
-        gameChanged = true;
-      }
-    });
-    if(gameChanged) affectedGames.push(g);
-  });
-
-  if(affectedGames.length){
-    // Simpan ke localStorage
-    saveGames();
-    // Push langsung ke Supabase (bypass draft queue) — ini perubahan otomatis
-    // sistem, bukan edit admin, jadi tidak perlu lewat "Draft Perubahan".
-    // Setelah push, update syncedSnapshot di draft-queue supaya perubahan ini
-    // tidak muncul sebagai "Belum Disimpan" di halaman Draft.
-    if(window.scPushSingleGame){
-      affectedGames.forEach(async g=>{
-        try{
-          await window.scPushSingleGame(g);
-          // Update snapshot supaya draft-queue tidak mendeteksi ini sebagai dirty
-          if(window.GlacierDraft) window.GlacierDraft.snapshotAllGamesAsSynced();
-        }catch(e){
-          console.warn("checkAutoPromo: gagal push ke Supabase, akan dicoba interval berikutnya:", e);
-        }
-      });
-    }
-    if(currentPage==="products") renderProductPage();
-  }
-
-  // Re-render tabel promo label (scheduled/active/expired) meski tidak ada perubahan status
-  // supaya label badge terupdate otomatis saat waktu berubah.
-  if(currentPage==="products") renderProductTable();
-}
-
-setInterval(checkAutoPromo, 10000); // every 10s
 
 // ─── INIT ─────────────────────────────────────
 saveGames(); // normalize on boot

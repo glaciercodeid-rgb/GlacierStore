@@ -19,11 +19,6 @@
     </div>
 
     <header class="topbar">
-      <button type="button" class="rail-toggle" data-rail-toggle aria-label="Buka menu" aria-expanded="false">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
       <a class="brand" href="index.html" aria-label="GlacierStore website">
         <span>GS</span>
         <strong>GlacierStore</strong>
@@ -36,9 +31,7 @@
       </button>
     </header>
 
-    <div class="rail-overlay" data-rail-overlay></div>
-
-    <aside class="rail" data-rail aria-label="Admin navigation">
+    <aside class="rail" aria-label="Admin navigation">
       <p class="rail-title">Menu Admin</p>
       <button class="rail-button is-active" type="button" data-nav="dashboard" title="Dashboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -59,10 +52,6 @@
       <button class="rail-button" type="button" data-nav="capital" title="Modal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
         <span>Modal</span>
-      </button>
-      <button class="rail-button" type="button" data-nav="draft" title="Draft Perubahan">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-        <span>Draft Perubahan <span class="draft-badge" data-draft-badge hidden></span></span>
       </button>
       <button class="rail-button" type="button" data-nav="settings" title="Pengaturan">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -266,20 +255,6 @@
             </thead>
             <tbody data-capital-table-body></tbody>
           </table>
-        </div>
-      </section>
-
-      <!-- ═══════════════════ PAGE: DRAFT PERUBAHAN ═══════════════════ -->
-      <section class="admin-page" data-page="draft">
-        <div class="page-head">
-          <div>
-            <h1>Draft Perubahan</h1>
-            <p>Semua edit (harga, tambah game, dll) masuk sini dulu. Klik "Update" untuk benar-benar mengirim ke database.</p>
-          </div>
-          <button class="primary-button" type="button" data-update-all>Update Semua</button>
-        </div>
-        <div data-draft-list>
-          <p style="color:#5f6672;padding:20px 0">Tidak ada perubahan yang menunggu. Semua data sudah tersinkron ✓</p>
         </div>
       </section>
 
@@ -646,7 +621,9 @@
         </header>
         <div class="modal-body">
           <div class="receipt-paper" data-receipt-paper>
-            <div class="receipt-logo-slot" data-receipt-logo-slot></div>
+            <div class="receipt-logo-slot" data-receipt-logo-slot>
+              <img src="assets/logo-icon.png" alt="GlacierStore" />
+            </div>
             <div class="receipt-brand" data-receipt-brand>GlacierStore</div>
             <p class="receipt-sub">Pasti Murah Pasti Untung</p>
             <div class="receipt-divider"></div>
@@ -681,86 +658,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="supabase-bridge.js"></script>
     <script>
-      // ─── AUTH GUARD + PULL DATA TERBARU + MUAT admin.js ─────
-      // PENTING: admin.js HARUS dimuat secara dinamis (bukan <script src>
-      // statis) supaya benar-benar menunggu scPullCatalog() selesai.
-      // Kalau admin.js dimuat lewat tag statis biasa, browser akan
-      // menjalankannya PARALEL (tidak menunggu) dengan proses async di
-      // atasnya — inilah yang sebelumnya menyebabkan admin.js membaca
-      // localStorage yang masih basi di device yang koneksinya lebih lambat
-      // (mis. HP), lalu menyimpan ulang data basi itu balik ke Supabase
-      // dan menimpa data yang benar dari device lain.
-      (async function authGuardAndLoad() {
+      // ─── AUTH GUARD ──────────────────────────────────────────
+      // Cek sesi login SEBELUM admin.js jalan. Kalau belum login, langsung
+      // lempar ke login.html. Kalau sudah, baru sembunyikan overlay dan
+      // biarkan admin.js (yang di-load setelah ini) berjalan normal.
+      (async function authGuard() {
         const { data } = await window.supabaseClient.auth.getSession();
         if (!data.session) {
           window.location.replace("login.html");
           return;
         }
-        try {
-          await window.scPullCatalog();
-        } catch (e) {
-          console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
-        }
-
-        // Baru muat admin.js SETELAH data terbaru benar-benar tersimpan
-        // di localStorage. Ini yang menjamin urutannya benar di semua device,
-        // termasuk yang koneksinya lambat.
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "admin.js";
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-
-        // Patch saveGames SETELAH admin.js selesai dimuat & jalan.
-        // PENTING: saveGames() TIDAK LAGI auto-push ke Supabase.
-        // Sekarang cuma menandai game yang berubah sebagai "dirty" di
-        // halaman Draft Perubahan. Push ke Supabase baru terjadi kalau
-        // user eksplisit klik "Update" / "Update Semua" di halaman itu
-        // (lihat draft-queue.js).
-        const _saveGames = saveGames;
-        saveGames = function () {
-          _saveGames();
-          if (window.GlacierDraft) window.GlacierDraft.checkDirtyGames();
-        };
-
-        // Settings tetap push langsung (risikonya kecil: cuma 1 baris,
-        // bukan koleksi produk yang bisa saling tabrakan).
-        const _saveSettings = saveSettings;
-        saveSettings = function () {
-          _saveSettings();
-          window.scPushSettingsSafe(siteSettings);
-        };
-
-        // Muat draft-queue.js SETELAH admin.js & patch di atas siap.
-        // Ini akan mengambil snapshot data yang baru saja ditarik dari
-        // Supabase sebagai "versi tersinkron" awal.
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "draft-queue.js";
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-
-        // Baru sekarang aman menghilangkan overlay loading — SETELAH admin.js
-        // DAN draft-queue.js benar-benar selesai dimuat & siap. Kalau overlay
-        // dihilangkan lebih awal (sebelum draft-queue.js siap), aksi user yang
-        // sempat dilakukan di celah waktu itu (mis. hapus game) tidak akan
-        // pernah tercatat sebagai draft — perubahan itu diam-diam "hilang"
-        // tanpa pernah terkirim ke Supabase.
         document.getElementById("auth-checking-overlay").remove();
-
-        // Klik menu "Draft Perubahan" harus render ulang halaman & label-nya
-        // (navigateTo bawaan admin.js tidak tahu-menahu soal halaman baru ini).
-        document.querySelector('[data-nav="draft"]')?.addEventListener("click", () => {
-          const label = document.querySelector("[data-page-label]");
-          if (label) label.textContent = "Draft Perubahan";
-          renderDraftPage();
-        });
       })();
 
       document.querySelector("[data-logout-btn]").addEventListener("click", async () => {
@@ -774,5 +683,6 @@
         if (event === "SIGNED_OUT") window.location.replace("login.html");
       });
     </script>
+    <script src="admin.js"></script>
   </body>
 </html>
