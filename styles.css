@@ -1116,7 +1116,8 @@ button {
 }
 
 .price-status {
-  top: 10px;
+  top: auto;
+  bottom: 10px;
   left: 10px;
   right: auto;
   background: #69717d;
