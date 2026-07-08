@@ -982,7 +982,7 @@ button {
   border: 1px solid var(--line);
   border-left-width: 1px;
   border-radius: 14px;
-  padding: 20px 20px 19px;
+  padding: 20px 20px 48px;
   overflow: hidden;
   cursor: pointer;
   opacity: 0;
@@ -1858,7 +1858,7 @@ button {
   }
 
   .price-card {
-    padding: 17px 14px;
+    padding: 17px 14px 44px;
   }
 
   .price-card h3 {
@@ -1939,7 +1939,7 @@ button {
   }
 
   .price-card {
-    padding: 15px 12px;
+    padding: 15px 12px 42px;
   }
 
   .price-value,
