@@ -8,6 +8,7 @@
     <meta name="description" content="Halaman admin GlacierStore - hanya untuk pengelola" />
     <meta property="og:title" content="Admin GlacierStore" />
     <meta property="og:robots" content="noindex, nofollow" />
+    <link rel="icon" href="/assets/logo-icon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -707,7 +708,6 @@
           // Tambahkan ini: tarik data penjualan terbaru dari Supabase
           await window.scPullOrders();
           // Reload data orders di memori
-          orders = readOrders();
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
