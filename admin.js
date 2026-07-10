@@ -1450,10 +1450,14 @@ function saveSaleFromForm(){
   const ref    = document.querySelector("[data-sale-ref]").value.trim();
   const qrText = document.querySelector("[data-sale-qrtext]").value.trim();
 
+  // ✅ AMBIL TANGGAL DARI INPUT FORM
+  const dateInput = document.querySelector("[data-sale-date]").value;
   const now = new Date();
+  const selectedDate = dateInput || now.toISOString().slice(0,10);
+
   const order = {
     orderId: generateOrderId(),
-    date: now.toISOString().slice(0,10),
+    date: selectedDate,                     // <-- Pakai tanggal pilihan user
     createdAt: now.toISOString(),
     gameId: game?.id || "",
     gameName: game?.name || "-",
