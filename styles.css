@@ -994,6 +994,30 @@ button {
   font-weight: 800;
 }
 
+/* Validasi User ID */
+.uid-input-error {
+  border-color: #e05252 !important;
+  outline: 2px solid rgba(224, 82, 82, 0.25) !important;
+  background: #fff8f8 !important;
+}
+
+.uid-error-note {
+  color: #e05252 !important;
+}
+
+@keyframes uid-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.uid-shake {
+  animation: uid-shake 0.35s ease;
+}
+
 .price-grid.is-switching {
   opacity: 0;
 }

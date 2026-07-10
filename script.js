@@ -456,7 +456,47 @@ function showContactModal() {
   document.body.classList.add("is-locked");
 }
 
+function showUserIdError() {
+  const input = document.querySelector("[data-user-id]");
+  const note  = document.querySelector("[data-last-order-note]");
+  if (!input) return;
+
+  // tampilkan pesan error di bawah tombol (pakai elemen yang sama dengan last order note)
+  const prev = note?.textContent || "";
+  if (note) {
+    note.textContent = "⚠ Masukkan User ID kamu dulu sebelum melanjutkan.";
+    note.classList.add("uid-error-note");
+  }
+
+  // highlight input
+  input.classList.add("uid-input-error");
+  input.focus();
+
+  // shake animasi
+  input.classList.add("uid-shake");
+  input.addEventListener("animationend", () => input.classList.remove("uid-shake"), { once: true });
+
+  // hilangkan error saat user mulai ngetik
+  const clearError = () => {
+    input.classList.remove("uid-input-error");
+    if (note) {
+      note.classList.remove("uid-error-note");
+      // kalau sebelumnya ada last-order text, jangan hapus — biarkan script normal yang urus
+      if (note.textContent.startsWith("⚠")) note.textContent = "";
+    }
+    input.removeEventListener("input", clearError);
+  };
+  input.addEventListener("input", clearError);
+}
+
 function openContactModal() {
+  // Validasi User ID dulu
+  const userIdVal = document.querySelector("[data-user-id]")?.value.trim();
+  if (!userIdVal) {
+    showUserIdError();
+    return;
+  }
+
   const maintenanceActive = isGlobalMaintenanceActive();
   if (maintenanceActive) {
     showMaintenanceGate();
