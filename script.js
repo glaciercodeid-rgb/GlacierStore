@@ -160,12 +160,12 @@ function generateOrderId(){
   return id;
 }
 
+// ─── PARSE MONEY ─────────────────────────────
+function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
+
 let games = readStoredGames();
 let settings = readSettings();
 let orders = []; // placeholder, orders akan diisi oleh scPullOrders
-
-// ─── PARSE MONEY ─────────────────────────────
-function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
 
 const header = document.querySelector("[data-header]");
 const gameGrid = document.querySelector("[data-game-grid]");
