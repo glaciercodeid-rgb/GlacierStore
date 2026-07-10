@@ -148,8 +148,21 @@ function isGlobalMaintenanceActive(now = new Date()) {
   return true;
 }
 
+// ─── ORDER ID GENERATOR ──────────────────────────
+function generateOrderId(){
+  let id;
+  let attempts = 0;
+  do{
+    id = String(Math.floor(100000 + Math.random() * 900000));
+    attempts++;
+    if(attempts > 500) id = String(Math.floor(1000000 + Math.random() * 9000000));
+  }while(orders.some(o=>o.orderId===id)); // cek duplikat di localStorage
+  return id;
+}
+
 let games = readStoredGames();
 let settings = readSettings();
+let orders = []; // placeholder, orders akan diisi oleh scPullOrders
 
 const header = document.querySelector("[data-header]");
 const gameGrid = document.querySelector("[data-game-grid]");
@@ -446,16 +459,47 @@ function updateZoneIdVisibility() {
 function showContactModal() {
   const game = getActiveGame();
   const product = getSelectedProduct();
-  const userId = document.querySelector("[data-user-id]").value.trim() || "-";
+  const userId = document.querySelector("[data-user-id]").value.trim() || "";
   const zoneIdField = document.querySelector("[data-zone-id-field]");
   const showsZoneId = zoneIdField && !zoneIdField.hidden;
-  const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "-") : "";
+  const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "") : "";
   
+  // Validasi: User ID wajib diisi
+  if (!userId) {
+    alert("⚠️ User ID wajib diisi sebelum melanjutkan pembayaran!");
+    return;
+  }
+
   const message = encodeURIComponent(
     `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}` +
     (showsZoneId ? `\nZone ID: ${zoneId}` : "")
   );
 
+  // --- SIMPAN KE SUPABASE SEBELUM BUKA WA/TELEGRAM ---
+  const order = {
+    orderId: generateOrderId(),
+    date: new Date().toISOString().slice(0,10),
+    createdAt: new Date().toISOString(),
+    gameId: game?.id || "",
+    gameName: game?.name || "-",
+    productName: product?.name || "-",
+    priceValue: parseMoney(product?.price || "0"),
+    costValue: 0, // modal belum diketahui
+    profitValue: parseMoney(product?.price || "0"),
+    buyer: userId,
+    nick: "",
+    ref: "",
+    qrText: "",
+    status: "menunggu", // <-- TAMBAHKAN STATUS
+  };
+  
+  // Kirim ke Supabase via scPushOrder (async, tidak menghambat buka WA)
+  window.scPushOrder(order).catch(e => {
+    console.warn("Gagal simpan order dari landing page:", e);
+  });
+  // ----------------------------------------------------
+
+  // Buka WA/Telegram
   document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
   document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
   contactModal.classList.add("is-open");
