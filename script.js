@@ -439,15 +439,15 @@ function showContactModal() {
   const zoneIdField = document.querySelector("[data-zone-id-field]");
   const showsZoneId = zoneIdField && !zoneIdField.hidden;
   const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "-") : "";
-  const zoneLine = showsZoneId ? `\nZone ID: ${zoneId}` : "";
-  const message = encodeURIComponent(
-    `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}${zoneLine}`
-  );
-  document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
   
-  // ✅ UBAH DI SINI: Tambahkan ?text= agar Telegram otomatis mengisi pesan
-  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
+  // ✅ SEKARANG ZONE ID SUDAH MASUK KE PESAN
+  const message = encodeURIComponent(
+    `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}` +
+    (showsZoneId ? `\nZone ID: ${zoneId}` : "")
+  );
 
+  document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
+  document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
   contactModal.classList.add("is-open");
   contactModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
