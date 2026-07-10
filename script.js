@@ -476,8 +476,9 @@ function showUserIdError() {
   input.classList.add("uid-shake");
   input.addEventListener("animationend", () => input.classList.remove("uid-shake"), { once: true });
 
-  // hilangkan error saat user mulai ngetik
+  // hilangkan error hanya kalau field sudah terisi
   const clearError = () => {
+    if (!input.value.trim()) return; // belum terisi, biarkan warning tetap
     input.classList.remove("uid-input-error");
     if (note) {
       note.classList.remove("uid-error-note");
