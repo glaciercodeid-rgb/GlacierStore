@@ -21,9 +21,7 @@
 
     <header class="site-header" data-header>
       <div class="container nav-shell">
-        <a class="wordmark" href="#top" aria-label="GlacierStore beranda" data-brand>
-          <img src="assets/logo-full.png" alt="GlacierStore" class="wordmark-logo" />
-        </a>
+        <a class="wordmark" href="#top" aria-label="GlacierStore beranda" data-brand>GlacierStore</a>
         <nav class="desktop-nav" aria-label="Navigasi utama">
           <a href="#pilih-game">Top Up</a>
           <a href="#cara-order">Cara Order</a>
@@ -91,8 +89,12 @@
           <aside class="checkout-panel" id="kontak">
             <h2>Detail Order</h2>
             <label>
-              User ID / Nomor Ponsel
+              User ID
               <input type="text" placeholder="Contoh: 123456789" data-user-id />
+            </label>
+            <label data-zone-id-field hidden>
+              Zone ID
+              <input type="text" placeholder="Contoh: 2001" data-zone-id />
             </label>
             <div class="checkout-summary">
               <span>Game</span>
@@ -110,16 +112,26 @@
 
       <section class="guide-section" id="cara-order">
         <div class="container">
-          <img src="assets/panduan-order.jpg" alt="Cara Order di GlacierStore" class="guide-image" />
+          <div class="section-heading center-heading">
+            <p class="eyebrow">PANDUAN</p>
+            <h2>Cara Order di <span data-brand-inline>GlacierStore</span></h2>
+            <p>Panduan mudah untuk top up manual. Ikuti langkah sederhana berikut.</p>
+          </div>
+          <div class="guide-grid">
+            <article><span>1</span><h3>Pilih Produk</h3><p>Temukan game favorit kamu di halaman utama.</p></article>
+            <article><span>2</span><h3>Masukkan Data</h3><p>Input User ID (dan Zone ID untuk Mobile Legends) dengan benar.</p></article>
+            <article><span>3</span><h3>Pilih Nominal</h3><p>Tentukan jumlah top up yang tersedia.</p></article>
+            <article><span>4</span><h3>Klik Bayar</h3><p>Pilih admin via WhatsApp atau Telegram.</p></article>
+            <article><span>5</span><h3>Bayar Manual</h3><p>Lakukan pembayaran dan kirim bukti ke admin.</p></article>
+            <article><span>6</span><h3>Selesai</h3><p>Pesanan akan diproses setelah konfirmasi.</p></article>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="container footer-shell">
-        <a class="wordmark footer-brand" href="#top" data-brand-footer>
-          <img src="assets/logo-full.png" alt="GlacierStore" class="wordmark-logo" />
-        </a>
+        <a class="wordmark footer-brand" href="#top" data-brand-footer>GlacierStore</a>
         <div class="footer-info">
           <span>Top up game manual</span>
           <span data-footer-hours>Admin 08:00 - 22:00</span>
@@ -153,6 +165,24 @@
     </div>
 
     <script src="data.js"></script>
-    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-bridge.js"></script>
+    <script>
+      // Tarik data terbaru dari Supabase dulu (kalau ada), baru jalankan script.js
+      // seperti biasa. Kalau Supabase gagal/kosong, otomatis fallback ke data
+      // lokal/default — landing page tetap tampil normal.
+      (async function boot() {
+        try {
+          await window.scPullCatalog();
+        } catch (e) {
+          console.warn("Supabase belum siap, pakai data lokal/default:", e);
+        }
+        const s = document.createElement("script");
+        s.src = "script.js";
+        document.body.appendChild(s);
+      })();
+    </script>
   </body>
+
 </html>
