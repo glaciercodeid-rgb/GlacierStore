@@ -16,9 +16,6 @@
   </head>
   <body>
 
-    <!-- Auth guard: disembunyikan sampai sesi login terverifikasi, supaya isi
-         admin panel tidak sempat "kelihatan sekilas" sebelum redirect ke login.
-         Lihat script auth-guard di bagian bawah file ini. -->
     <div id="auth-checking-overlay" style="position:fixed;inset:0;z-index:999;background:#f5f7f8;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;color:#5f6672;">
       Memeriksa sesi login...
     </div>
@@ -79,7 +76,6 @@
 
     <main class="admin-main">
 
-      <!-- ═══════════════════ PAGE: DASHBOARD ═══════════════════ -->
       <section class="admin-page is-active" data-page="dashboard">
         <div class="page-head">
           <div>
@@ -114,7 +110,6 @@
         </article>
       </section>
 
-      <!-- ═══════════════════ PAGE: GAMES ═══════════════════ -->
       <section class="admin-page" data-page="games">
         <div class="page-head">
           <div>
@@ -144,7 +139,6 @@
         <div class="game-grid-admin" data-game-grid></div>
       </section>
 
-      <!-- ═══════════════════ PAGE: PRODUCTS ═══════════════════ -->
       <section class="admin-page" data-page="products">
         <div class="page-head">
           <div>
@@ -198,7 +192,6 @@
         </div>
       </section>
 
-      <!-- ═══════════════════ PAGE: SALES ═══════════════════ -->
       <section class="admin-page" data-page="sales">
         <div class="page-head">
           <div>
@@ -224,7 +217,6 @@
           <select class="filter-select" data-sales-game-filter>
             <option value="all">Semua Game</option>
           </select>
-          <!-- TAMBAHKAN INPUT USER ID -->
           <label>
             Cari User ID
             <input type="text" data-sales-userid-filter placeholder="Contoh: 123456789" inputmode="numeric" />
@@ -242,7 +234,6 @@
                 <th>Nominal</th>
                 <th>Harga</th>
                 <th>Untung</th>
-                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -251,7 +242,6 @@
         </div>
       </section>
 
-      <!-- ═══════════════════ PAGE: CAPITAL (MODAL) ═══════════════════ -->
       <section class="admin-page" data-page="capital">
         <div class="page-head">
           <div>
@@ -281,7 +271,6 @@
         </div>
       </section>
 
-      <!-- ═══════════════════ PAGE: DRAFT PERUBAHAN ═══════════════════ -->
       <section class="admin-page" data-page="draft">
         <div class="page-head">
           <div>
@@ -295,7 +284,6 @@
         </div>
       </section>
 
-      <!-- ═══════════════════ PAGE: SETTINGS ═══════════════════ -->
       <section class="admin-page" data-page="settings">
         <div class="page-head">
           <div>
@@ -376,10 +364,8 @@
 
     </main>
 
-    <!-- ═══════ TOAST ═══════ -->
     <div class="toast-container" data-toast-container></div>
 
-    <!-- ═══════ CONFIRM DIALOG ═══════ -->
     <div class="modal-overlay" data-confirm-overlay aria-hidden="true">
       <div class="modal-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
         <div class="modal-head">
@@ -395,7 +381,6 @@
       </div>
     </div>
 
-    <!-- ═══════ GAME MODAL ═══════ -->
     <div class="modal-overlay" data-game-modal aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="game-modal-title">
         <header class="modal-head">
@@ -438,7 +423,6 @@
       </section>
     </div>
 
-    <!-- ═══════ PRODUCT MODAL ═══════ -->
     <div class="modal-overlay" data-product-modal aria-hidden="true">
       <section class="modal-card product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <header class="modal-head teal-head">
@@ -510,7 +494,6 @@
       </section>
     </div>
 
-    <!-- ═══════ MAINTENANCE MODAL (per game) ═══════ -->
     <div class="modal-overlay" data-maintenance-modal aria-hidden="true">
       <section class="modal-card maintenance-modal" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
         <header class="modal-head">
@@ -557,7 +540,6 @@
       </section>
     </div>
 
-    <!-- ═══════ BULK MODAL ═══════ -->
     <div class="modal-overlay" data-bulk-modal aria-hidden="true">
       <section class="modal-card bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
         <header class="modal-head">
@@ -586,11 +568,10 @@
       </section>
     </div>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- ═══════ SALE MODAL ═══════ -->
+
     <div class="modal-overlay" data-sale-modal aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title">
         <header class="modal-head">
@@ -649,7 +630,6 @@
       </section>
     </div>
 
-    <!-- ═══════ RECEIPT (STRUK) MODAL ═══════ -->
     <div class="modal-overlay" data-receipt-modal aria-hidden="true">
       <section class="modal-card receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
         <header class="modal-head">
@@ -695,15 +675,6 @@
     <script src="supabase-config.js"></script>
     <script src="supabase-bridge.js"></script>
     <script>
-      // ─── AUTH GUARD + PULL DATA TERBARU + MUAT admin.js ─────
-      // PENTING: admin.js HARUS dimuat secara dinamis (bukan <script src>
-      // statis) supaya benar-benar menunggu scPullCatalog() selesai.
-      // Kalau admin.js dimuat lewat tag statis biasa, browser akan
-      // menjalankannya PARALEL (tidak menunggu) dengan proses async di
-      // atasnya — inilah yang sebelumnya menyebabkan admin.js membaca
-      // localStorage yang masih basi di device yang koneksinya lebih lambat
-      // (mis. HP), lalu menyimpan ulang data basi itu balik ke Supabase
-      // dan menimpa data yang benar dari device lain.
       (async function authGuardAndLoad() {
         const { data } = await window.supabaseClient.auth.getSession();
         if (!data.session) {
@@ -712,16 +683,11 @@
         }
         try {
           await window.scPullCatalog();
-          // Tambahkan ini: tarik data penjualan terbaru dari Supabase
           await window.scPullOrders();
-          // Reload data orders di memori
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
 
-        // Baru muat admin.js SETELAH data terbaru benar-benar tersimpan
-        // di localStorage. Ini yang menjamin urutannya benar di semua device,
-        // termasuk yang koneksinya lambat.
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
           script.src = "admin.js";
@@ -730,29 +696,18 @@
           document.body.appendChild(script);
         });
 
-        // Patch saveGames SETELAH admin.js selesai dimuat & jalan.
-        // PENTING: saveGames() TIDAK LAGI auto-push ke Supabase.
-        // Sekarang cuma menandai game yang berubah sebagai "dirty" di
-        // halaman Draft Perubahan. Push ke Supabase baru terjadi kalau
-        // user eksplisit klik "Update" / "Update Semua" di halaman itu
-        // (lihat draft-queue.js).
         const _saveGames = saveGames;
         saveGames = function () {
           _saveGames();
           if (window.GlacierDraft) window.GlacierDraft.checkDirtyGames();
         };
 
-        // Settings tetap push langsung (risikonya kecil: cuma 1 baris,
-        // bukan koleksi produk yang bisa saling tabrakan).
         const _saveSettings = saveSettings;
         saveSettings = function () {
           _saveSettings();
           window.scPushSettingsSafe(siteSettings);
         };
 
-        // Muat draft-queue.js SETELAH admin.js & patch di atas siap.
-        // Ini akan mengambil snapshot data yang baru saja ditarik dari
-        // Supabase sebagai "versi tersinkron" awal.
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
           script.src = "draft-queue.js";
@@ -761,16 +716,8 @@
           document.body.appendChild(script);
         });
 
-        // Baru sekarang aman menghilangkan overlay loading — SETELAH admin.js
-        // DAN draft-queue.js benar-benar selesai dimuat & siap. Kalau overlay
-        // dihilangkan lebih awal (sebelum draft-queue.js siap), aksi user yang
-        // sempat dilakukan di celah waktu itu (mis. hapus game) tidak akan
-        // pernah tercatat sebagai draft — perubahan itu diam-diam "hilang"
-        // tanpa pernah terkirim ke Supabase.
         document.getElementById("auth-checking-overlay").remove();
 
-        // Klik menu "Draft Perubahan" harus render ulang halaman & label-nya
-        // (navigateTo bawaan admin.js tidak tahu-menahu soal halaman baru ini).
         document.querySelector('[data-nav="draft"]')?.addEventListener("click", () => {
           const label = document.querySelector("[data-page-label]");
           if (label) label.textContent = "Draft Perubahan";
@@ -783,13 +730,10 @@
         window.location.replace("login.html");
       });
 
-      // Kalau sesi berakhir/logout dari tab lain saat admin panel masih terbuka,
-      // otomatis lempar balik ke login supaya tidak ada celah akses tanpa sesi valid.
       window.supabaseClient.auth.onAuthStateChange((event) => {
         if (event === "SIGNED_OUT") window.location.replace("login.html");
       });
 
-      // ─── TAMBAHKAN SESSION TIMEOUT DI SINI ──────────────────────
       let idleTimer = null;
       function resetIdleTimer() {
         if (idleTimer) clearTimeout(idleTimer);
@@ -797,14 +741,13 @@
           toast("Anda tidak aktif selama 30 menit. Logout otomatis...", "warn");
           await window.supabaseClient.auth.signOut();
           window.location.replace("login.html");
-        }, 30 * 60 * 1000); // 30 menit
+        }, 30 * 60 * 1000);
       }
 
-      // Reset timer setiap kali ada interaksi user
       document.addEventListener("mousemove", resetIdleTimer);
       document.addEventListener("keydown", resetIdleTimer);
       document.addEventListener("click", resetIdleTimer);
-      resetIdleTimer(); // jalankan pertama kali
+      resetIdleTimer();
     </script>
   </body>
 </html>

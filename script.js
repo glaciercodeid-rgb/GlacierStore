@@ -68,9 +68,6 @@ function minutesFromTime(value) {
   return (hour || 0) * 60 + (minute || 0);
 }
 
-// Sisa menit dari sekarang sampai jam tutup, mendukung jam tutup "overnight"
-// (mis. buka 08:00, tutup 02:00 keesokan harinya). Dipakai untuk fitur Last Order,
-// supaya pesannya cuma muncul saat benar-benar mendekati jam tutup — bukan terus-terusan.
 function minutesUntilClose(hours, now = new Date()) {
   const openMinutes = minutesFromTime(hours.open || "08:00");
   const closeMinutes = minutesFromTime(hours.close || "22:00");
@@ -97,11 +94,6 @@ function getOperationalState(now = new Date()) {
   nextOpen.setHours(Number(open.slice(0, 2)), Number(open.slice(3, 5)), 0, 0);
   if (online || currentMinutes >= openMinutes) nextOpen.setDate(nextOpen.getDate() + 1);
 
-  // "Tutup Sementara (Manual)" — override murni status online/offline, TIDAK
-  // mengubah jam buka/tutup ataupun hitung mundur (nextOpen) sama sekali.
-  // Jadi kalau jam operasional 08:00-22:00 lalu admin tutup manual jam 10 malam,
-  // toko langsung offline saat itu juga, tapi jadwal & countdown tetap mengacu
-  // ke jam operasional asli seolah manual override ini tidak pernah ada.
   const manuallyClosed = Boolean(hours.manualClosed);
 
   return { online: !manuallyClosed && (!hours.autoOffline || online), open, close, nextOpen };
@@ -128,7 +120,6 @@ function formatDateTime(value) {
   });
 }
 
-// Fungsi baru: hanya menampilkan jam (HH:MM), tanpa hari/tanggal
 function formatTimeOnly(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -148,7 +139,6 @@ function isGlobalMaintenanceActive(now = new Date()) {
   return true;
 }
 
-// ─── ORDER ID GENERATOR ──────────────────────────
 function generateOrderId(){
   let id;
   let attempts = 0;
@@ -156,16 +146,15 @@ function generateOrderId(){
     id = String(Math.floor(100000 + Math.random() * 900000));
     attempts++;
     if(attempts > 500) id = String(Math.floor(1000000 + Math.random() * 9000000));
-  }while(orders.some(o=>o.orderId===id)); // cek duplikat di localStorage
+  }while(orders.some(o=>o.orderId===id));
   return id;
 }
 
-// ─── PARSE MONEY ─────────────────────────────
 function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
 
 let games = readStoredGames();
 let settings = readSettings();
-let orders = []; // placeholder, orders akan diisi oleh scPullOrders
+let orders = [];
 
 const header = document.querySelector("[data-header]");
 const gameGrid = document.querySelector("[data-game-grid]");
@@ -183,8 +172,6 @@ let selectedProductKey = "";
 let priceObserver = null;
 let tickTimer = null;
 let offlineGateDismissed = false;
-// Sengaja TIDAK disimpan ke localStorage/sessionStorage: banner harus muncul lagi
-// setiap kali pengguna refresh atau membuka ulang website, walau sebelumnya sudah di-silang (x).
 let bannerDismissed = false;
 
 function formatProductKey(gameId, productName) {
@@ -215,8 +202,6 @@ function renderSettingsText() {
   const brandName = settings.brandName || "GlacierStore";
   document.title = `${brandName} - Top Up Game`;
   document.querySelectorAll("[data-brand], [data-brand-inline], [data-brand-footer]").forEach((node) => {
-    // Kalau elemen ini berisi logo gambar, jangan timpa dengan teks polos —
-    // cukup perbarui alt text-nya saja supaya nama brand tetap ikut update.
     const logoImg = node.querySelector("img");
     if (logoImg) {
       logoImg.alt = brandName;
@@ -237,7 +222,6 @@ function renderSettingsText() {
   document.querySelector("[data-info-message]").textContent = String(banner.message || "")
     .replaceAll("{open}", hours.open || "08:00")
     .replaceAll("{close}", hours.close || "22:00")
-    // GANTI: pakai formatTimeOnly, bukan formatDateTime
     .replaceAll("{maintenance_start}", settings.systemMaintenance?.start ? formatTimeOnly(settings.systemMaintenance.start) : "00:00")
     .replaceAll("{maintenance_end}", settings.systemMaintenance?.end ? formatTimeOnly(settings.systemMaintenance.end) : "04:00");
 }
@@ -265,9 +249,6 @@ function renderOperationalStatus() {
 
   const lastOrderNote = document.querySelector("[data-last-order-note]");
   const lastOrderMinutes = Number(hours.lastOrderMinutes) || 0;
-  // Pesan Last Order cuma boleh tampil kalau: fiturnya aktif, toko sedang online
-  // (kalau sudah offline ya sudah tampil pesan offline, bukan last order lagi),
-  // dan sisa waktu ke jam tutup sudah masuk ambang menit yang di-set admin.
   const withinLastOrderWindow =
     hours.lastOrderEnabled &&
     state.online &&
@@ -279,7 +260,6 @@ function renderOperationalStatus() {
     if (!gateModal.classList.contains("is-open")) {
       openGate("Admin sedang offline", "Kami akan buka kembali dalam:", state.nextOpen, false);
     } else if (!gateChainToContact) {
-      // Gate sudah terbuka (bukan dari alur Bayar) — cukup perbarui hitung mundurnya saja.
       updateGateCountdown(state.nextOpen);
     }
   }
@@ -442,9 +422,6 @@ function switchGame(gameId, card) {
   updateZoneIdVisibility();
 }
 
-// Zone ID cuma dibutuhkan untuk game tertentu (saat ini: Mobile Legends).
-// Field-nya disembunyikan total (bukan cuma dikosongkan) untuk game lain,
-// supaya pembeli tidak bingung diminta isi sesuatu yang tidak relevan.
 function updateZoneIdVisibility() {
   const field = document.querySelector("[data-zone-id-field]");
   if (!field) return;
@@ -456,9 +433,6 @@ function updateZoneIdVisibility() {
   }
 }
 
-// Menampilkan popup pilihan kontak (WhatsApp / Telegram).
-// SEMUA aksi "hubungi admin" di seluruh website harus lewat fungsi ini,
-// supaya pembeli selalu diberi pilihan WhatsApp atau Telegram.
 function showContactModal() {
   const game = getActiveGame();
   const product = getSelectedProduct();
@@ -467,7 +441,6 @@ function showContactModal() {
   const showsZoneId = zoneIdField && !zoneIdField.hidden;
   const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "") : "";
   
-  // Validasi: User ID wajib diisi
   if (!userId) {
     alert("⚠️ User ID wajib diisi sebelum melanjutkan pembayaran!");
     return;
@@ -478,7 +451,6 @@ function showContactModal() {
     (showsZoneId ? `\nZone ID: ${zoneId}` : "")
   );
 
-  // --- SIMPAN KE SUPABASE SEBELUM BUKA WA/TELEGRAM ---
   const order = {
     orderId: generateOrderId(),
     date: new Date().toISOString().slice(0,10),
@@ -487,22 +459,18 @@ function showContactModal() {
     gameName: game?.name || "-",
     productName: product?.name || "-",
     priceValue: parseMoney(product?.price || "0"),
-    costValue: 0, // modal belum diketahui
+    costValue: 0,
     profitValue: parseMoney(product?.price || "0"),
     buyer: userId,
     nick: "",
     ref: "",
     qrText: "",
-    status: "menunggu", // <-- TAMBAHKAN STATUS
   };
   
-  // Kirim ke Supabase via scPushOrder (async, tidak menghambat buka WA)
   window.scPushOrder(order).catch(e => {
     console.warn("Gagal simpan order dari landing page:", e);
   });
-  // ----------------------------------------------------
 
-  // Buka WA/Telegram
   document.querySelector("[data-contact-wa]").href = `https://wa.me/${settings.whatsappNumber || "6281234567890"}?text=${message}`;
   document.querySelector("[data-contact-telegram]").href = `https://t.me/${settings.telegramUsername || "iptstore_id"}?text=${message}`;
   contactModal.classList.add("is-open");
@@ -518,8 +486,6 @@ function openContactModal() {
   }
   const state = getOperationalState();
   if (!state.online && settings.adminHours?.autoOffline) {
-    // Tampilkan info "Admin sedang offline" dulu. Begitu pembeli klik "Tutup",
-    // popup pilihan WhatsApp/Telegram otomatis muncul (lihat closeGate()).
     openGate(
       "Admin sedang offline",
       "Kamu tetap bisa menghubungi admin, tapi pesanan diproses saat admin online.",
@@ -547,7 +513,6 @@ function openGate(title, message, untilDate, locked, options = {}) {
   document.querySelector("[data-gate-message]").textContent = message;
   document.querySelector("[data-gate-modal]").classList.toggle("is-locked-gate", locked);
   
-  // Atur tombol Hubungi Admin berdasarkan maintenance.contactUrgent
   const urgentBtn = document.querySelector("[data-urgent-contact]");
   if (urgentBtn) {
     const maintenance = settings.systemMaintenance || {};
@@ -588,22 +553,18 @@ function closeGate() {
 
 function showMaintenanceGate() {
   const maintenance = settings.systemMaintenance || {};
-  
-  // Pastikan popup maintenance tetap muncul
   openGate(
     "Kami sedang melakukan pemeliharaan sistem",
     maintenance.message || "Website sedang dalam pemeliharaan.",
     maintenance.end,
     true
   );
-  
-  // Paksa tombol "Hubungi Admin" hilang jika contactUrgent false
   const urgentBtn = document.querySelector("[data-urgent-contact]");
   if (urgentBtn) {
     if (maintenance.contactUrgent === false) {
-      urgentBtn.style.display = "none";   // Hilangkan tombol
+      urgentBtn.style.display = "none";
     } else {
-      urgentBtn.style.display = "";       // Tampilkan tombol (jika true)
+      urgentBtn.style.display = "";
     }
   }
 }
@@ -658,7 +619,6 @@ window.addEventListener("storage", (event) => {
   if (event.key === SETTINGS_KEY) {
     const prevEnabled = settings.infoBanner?.enabled;
     settings = readSettings();
-    // Kalau admin mengaktifkan banner lagi, reset dismiss state
     if (!prevEnabled && settings.infoBanner?.enabled) {
       bannerDismissed = false;
     }
@@ -691,14 +651,10 @@ document.querySelector("[data-open-contact]").addEventListener("click", openCont
 document.querySelector("[data-close-contact]").addEventListener("click", closeContactModal);
 document.querySelector("[data-close-gate]").addEventListener("click", closeGate);
 document.querySelector("[data-urgent-contact]").addEventListener("click", (event) => {
-  // Tombol "Hubungi Admin" di popup gate (offline / maintenance) harus selalu
-  // membuka popup pilihan WhatsApp/Telegram, bukan langsung menuju WhatsApp.
   event.preventDefault();
   showContactModal();
 });
 document.querySelector("[data-close-banner]").addEventListener("click", () => {
-  // Hanya menyembunyikan untuk sesi tampilan saat ini (di memori).
-  // Tidak disimpan permanen, sehingga saat halaman di-refresh atau dikunjungi lagi, banner muncul kembali.
   bannerDismissed = true;
   document.querySelector("[data-info-banner]").hidden = true;
   updateBannerHeight();
@@ -730,18 +686,12 @@ if (isGlobalMaintenanceActive()) showMaintenanceGate();
 startTicker();
 
 
-// ─── CEgAH URL BERUBAH SAAT KLIK LINK ANCHOR ─────────────────
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener("click", function(e) {
     const href = this.getAttribute("href");
-    // Kalau linknya cuma "#" doang, skip
     if (href === "#") return;
-    
-    // TAMBAHKAN BARIS INI: Lewati link yang bukan anchor (seperti WhatsApp/Telegram)
     if (!href.startsWith("#")) return; 
-
     e.preventDefault();
-    
     const targetElement = document.querySelector(href);
     if (targetElement) {
       const headerHeight = document.querySelector(".site-header")?.offsetHeight || 64;

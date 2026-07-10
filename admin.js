@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-//  GlacierStore — admin.js  (fully rebuilt)
+//  GlacierStore — admin.js  (versi sederhana)
 // ─────────────────────────────────────────────
 const STORAGE_KEY  = window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1";
 const SETTINGS_KEY = window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1";
@@ -28,8 +28,6 @@ function initials(v){
 function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
 function formatIdr(v){ return `Rp${(Number(v)||0).toLocaleString("id-ID")}`; }
 
-// Label status game: "maintenance", "gangguan", dan "segera-hadir" adalah status
-// terpisah (masing-masing tampil apa adanya di halaman utama), tanpa batasan jumlah game.
 function gameStatusLabel(status){
   if(status==="gangguan") return "Gangguan";
   if(status==="maintenance") return "Maintenance";
@@ -59,7 +57,6 @@ function guessCategory(name=""){
   return "Diamonds";
 }
 
-// ─── storage ─────────────────────────────────
 function readGames(){
   try{
     const s = localStorage.getItem(STORAGE_KEY);
@@ -122,7 +119,6 @@ function normalizeGames(source){
   }));
 }
 
-// ─── state ────────────────────────────────────
 let games        = normalizeGames(readGames());
 let siteSettings = readSettings();
 let orders       = readOrders();
@@ -145,7 +141,6 @@ function saveSettings(){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(siteSettings));
 }
 
-// ─── orders (penjualan) ───────────────────────
 function readOrders(){
   try{
     const s = localStorage.getItem(ORDERS_KEY);
@@ -158,10 +153,6 @@ function saveOrders(){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
-// Order ID: angka acak 6 digit, DIJAMIN tidak pernah duplikat di sistem.
-// Dicek dua lapis: (1) ke variabel `orders` di memori, (2) langsung ke
-// localStorage terbaru saat itu juga — supaya walau ada tab/perangkat lain
-// yang baru saja menyimpan order, id yang di-generate tetap tidak bentrok.
 function orderIdExists(id){
   if(orders.some(o=>o.orderId===id)) return true;
   try{
@@ -178,15 +169,11 @@ function generateOrderId(){
   do{
     id = String(Math.floor(100000 + Math.random() * 900000));
     attempts++;
-    // fallback pengaman: kalau entah bagaimana 6 digit acak terus bentrok
-    // ratusan kali (praktis mustahil), perpanjang jadi 7 digit supaya tidak infinite loop
     if(attempts > 500) id = String(Math.floor(1000000 + Math.random() * 9000000));
   }while(orderIdExists(id));
   return id;
 }
 
-// Simpan order dengan pengecekan akhir anti-duplikat tepat sebelum ditulis ke localStorage.
-// Kalau ternyata id sudah kepakai (kasus langka lintas-tab), generate ulang otomatis.
 function saveOrderSafely(order){
   let guard = 0;
   while(orderIdExists(order.orderId) && guard < 20){
@@ -194,9 +181,8 @@ function saveOrderSafely(order){
     guard++;
   }
   orders.push(order);
-  saveOrders(); // simpan ke localStorage dulu (biar tampilan langsung update)
+  saveOrders();
   
-  // Kirim ke Supabase (async, jangan tunggu)
   window.scPushOrder(order).catch(e => {
     console.warn("Gagal push order ke Supabase:", e);
     toast("Transaksi tersimpan lokal, tetapi gagal sinkron ke cloud. Cek koneksi.", "warn");
@@ -205,7 +191,6 @@ function saveOrderSafely(order){
   return order;
 }
 
-// ─── DOM refs ─────────────────────────────────
 const gameGrid      = document.querySelector("[data-game-grid]");
 const productTable  = document.querySelector("[data-product-table]");
 const selectedGameNameEl = document.querySelector("[data-selected-game-name]");
@@ -223,7 +208,6 @@ const productForm   = document.querySelector("[data-product-form]");
 const profitLine    = document.querySelector("[data-profit-line]");
 const productGameNameEl = document.querySelector("[data-product-game-name]");
 
-// ─── TOAST ───────────────────────────────────
 function toast(message, type = "success"){
   const container = document.querySelector("[data-toast-container]");
   const el = document.createElement("div");
@@ -237,10 +221,6 @@ function toast(message, type = "success"){
   }, 3200);
 }
 
-// ─── CONFIRM DIALOG ──────────────────────────
-// `message` bisa berupa string biasa (ditampilkan sebagai teks), atau array
-// of string (ditampilkan sebagai daftar ringkasan perubahan, mis. hasil dari
-// buildDiffSummary()).
 function confirm(title, message){
   return new Promise(resolve=>{
     const overlay = document.querySelector("[data-confirm-overlay]");
@@ -267,7 +247,6 @@ function confirm(title, message){
   });
 }
 
-// ─── NAVIGATION ──────────────────────────────
 const PAGE_LABELS = {
   dashboard: "Dashboard",
   games:     "Katalog Game",
@@ -303,10 +282,6 @@ document.querySelectorAll("[data-nav-to]").forEach(btn=>{
   btn.addEventListener("click",()=> navigateTo(btn.dataset.navTo));
 });
 
-// ─── SIDEBAR MOBILE (drawer) ─────────────────
-// Di layar sempit (mobile), sidebar (.rail) disembunyikan di luar layar lewat
-// CSS dan baru digeser masuk saat class "is-open" ditambahkan. Ini yang
-// menggantikan perilaku lama "sidebar hilang total tanpa cara buka lagi".
 const railEl        = document.querySelector("[data-rail]");
 const railOverlayEl = document.querySelector("[data-rail-overlay]");
 const railToggleEl  = document.querySelector("[data-rail-toggle]");
@@ -329,7 +304,6 @@ railToggleEl?.addEventListener("click", ()=>{
 });
 railOverlayEl?.addEventListener("click", closeRailDrawer);
 
-// ─── MODALS ──────────────────────────────────
 function openModal(modal){
   modal?.classList.add("is-open");
   modal?.setAttribute("aria-hidden","false");
@@ -341,7 +315,7 @@ function closeModals(){
     m?.setAttribute("aria-hidden","true");
   });
   clearFormErrors();
-  document.activeElement?.blur(); // <-- tambahkan ini untuk hilangkan warning aria-hidden
+  document.activeElement?.blur();
 }
 
 document.querySelectorAll("[data-close-modal]").forEach(btn=>{
@@ -352,7 +326,6 @@ document.querySelectorAll("[data-close-modal]").forEach(btn=>{
   m?.addEventListener("click", e=>{ if(e.target===m) closeModals(); });
 });
 
-// ─── VALIDATION HELPERS ──────────────────────
 function clearFormErrors(){
   document.querySelectorAll(".field-error").forEach(el=> el.textContent="");
 }
@@ -400,7 +373,6 @@ function validateMaintenanceForm(){
   return ok;
 }
 
-// ─── SETTINGS FORM ───────────────────────────
 function getNestedSetting(target, path){
   return path.split(".").reduce((v,p)=>v?.[p], target);
 }
@@ -443,13 +415,11 @@ function saveSiteSettings(){
 
 document.querySelector("[data-save-site-settings]").addEventListener("click", saveSiteSettings);
 
-// Auto-sync in-memory on input (no auto-save)
 document.querySelectorAll("[data-setting],[data-setting-check]").forEach(f=>{
   f.addEventListener("input",()=>{ readSettingsFromForm(); updateAdminCountdownPreview(); updateMaintenanceStatusPreview(); });
   f.addEventListener("change",()=>{ readSettingsFromForm(); updateAdminCountdownPreview(); updateMaintenanceStatusPreview(); });
 });
 
-// ─── COUNTDOWN PREVIEW ───────────────────────
 function updateAdminCountdownPreview(){
   const open  = getNestedSetting(siteSettings,"adminHours.open")  || "08:00";
   const close = getNestedSetting(siteSettings,"adminHours.close") || "22:00";
@@ -475,7 +445,6 @@ function updateAdminCountdownPreview(){
   }
 }
 
-// ─── MAINTENANCE STATUS PREVIEW ──────────────
 function isMaintenanceActiveNow(){
   const m = siteSettings.systemMaintenance || {};
   if(!m.enabled) return false;
@@ -515,7 +484,6 @@ function updateMaintenanceStatusPreview(){
   }
 }
 
-// ─── DASHBOARD ───────────────────────────────
 function renderDashboard(){
   const total   = games.length;
   const active  = games.filter(g=>g.status==="normal").length;
@@ -531,7 +499,6 @@ function renderDashboard(){
     <div class="stat-card"><span>${prods}</span><p>Total Produk</p></div>
   `;
 
-  // Operational status
   const h = siteSettings.adminHours || {};
   const open = h.open||"08:00", close = h.close||"22:00";
   const now = new Date();
@@ -539,8 +506,6 @@ function renderDashboard(){
   const curMins = now.getHours()*60+now.getMinutes();
   const overnight = closeMins<=openMins;
   const online = overnight ? curMins>=openMins||curMins<closeMins : curMins>=openMins&&curMins<closeMins;
-  // Manual override: kalau admin tutup manual, toko langsung dianggap tutup
-  // TANPA mengubah jam operasional atau hitung mundurnya sama sekali.
   const shouldBeOnline = !h.manualClosed && (!h.autoOffline || online);
 
   const nextOpen = new Date(now);
@@ -553,7 +518,6 @@ function renderDashboard(){
       ? `<div class="live-badge is-online">🟢 Online — ${open} s/d ${close}</div>`
       : `<div class="live-badge is-offline">🔴 Offline — buka kembali ${formatDuration(nextOpen-now)}</div>`;
 
-  // Maintenance status
   const mInfo = getMaintenanceCountdown();
   const maintEl = document.querySelector("[data-dash-maintenance]");
   if(!mInfo){
@@ -566,7 +530,6 @@ function renderDashboard(){
     maintEl.innerHTML = `<div class="live-badge" style="color:#858b93">Jadwal sudah berakhir</div>`;
   }
 
-  // Games with issues
   const badGames = games.filter(g=>g.status!=="normal");
   document.querySelector("[data-dash-maintenance-count]").textContent = badGames.length;
   document.querySelector("[data-dash-maintenance-list]").innerHTML = badGames.length
@@ -596,7 +559,6 @@ document.querySelector("[data-dash-maintenance-list]")?.addEventListener("click"
   toast(`${game.name} kembali aktif ✓`);
 });
 
-// ─── GAME CARDS ──────────────────────────────
 function renderGameCards(){
   const query  = (searchInput?.value||"").toLowerCase().trim();
   const filter = filterSelect?.value || "all";
@@ -639,9 +601,6 @@ gameGrid?.addEventListener("click", async e=>{
   if(toggle){
     const g = games.find(x=>x.id===toggle.dataset.toggleGame);
     if(!g) return;
-    // Tombol switch cepat ini khusus untuk mode "Maintenance". Untuk menandai
-    // game sebagai "Gangguan", gunakan tombol "🔧 Jadwal Maint." dan pilih
-    // Tipe Status = Gangguan pada modal.
     const next = g.status==="normal" ? "maintenance" : "normal";
     if(next==="maintenance"){
       const ok = await confirm("Aktifkan Maintenance", `Masukkan "${g.name}" ke mode maintenance?`);
@@ -651,9 +610,6 @@ gameGrid?.addEventListener("click", async e=>{
       if(!ok) return;
     }
     g.status = next;
-    // Bersihkan start/end lama: ini toggle manual, bukan jadwal otomatis.
-    // Kalau tidak dibersihkan, jadwal lama yang sudah lewat waktu selesainya
-    // akan membuat checkAutoMaintenance() langsung mengembalikannya ke normal.
     g.maintenance = { ...(g.maintenance||{}), type:"maintenance", enabled: next==="maintenance", start:"", end:"" };
     saveGames();
     renderGameCards();
@@ -698,7 +654,6 @@ gameGrid?.addEventListener("click", async e=>{
 searchInput?.addEventListener("input", renderGameCards);
 filterSelect?.addEventListener("change", renderGameCards);
 
-// ─── DRAG & DROP: urutan game ─────────────────
 let draggedGameId = null;
 
 gameGrid?.addEventListener("dragstart", e=>{
@@ -738,14 +693,13 @@ gameGrid?.addEventListener("drop", e=>{
 
   const [moved] = games.splice(fromIndex,1);
   games.splice(toIndex,0,moved);
-  games.forEach((g,i)=> g.sortOrder = i); // sinkron dengan kolom sort_order Supabase nanti
+  games.forEach((g,i)=> g.sortOrder = i);
   saveGames();
   renderGameCards();
   if(currentPage==="dashboard") renderDashboard();
   toast("Urutan game diperbarui ✓");
 });
 
-// ─── GAME FORM ────────────────────────────────
 function openGameEditor(gameId=null){
   editingGameId = gameId;
   const g = games.find(x=>x.id===gameId);
@@ -792,9 +746,7 @@ function saveGameFromForm(){
 document.querySelector("[data-open-game-modal]").addEventListener("click", ()=> openGameEditor(null));
 document.querySelector("[data-save-game]").addEventListener("click", saveGameFromForm);
 
-// ─── PRODUCT PAGE ─────────────────────────────
 function renderProductPage(){
-  // Render game picker chips
   const picker = document.querySelector("[data-product-game-picker]");
   picker.innerHTML = games.map(g=>`
     <button class="game-chip ${g.id===activeGameId?"is-active":""} ${g.status!=="normal"?"is-maint":""}"
@@ -896,7 +848,6 @@ productTable?.addEventListener("click", async e=>{
   }
 });
 
-// ─── DRAG & DROP: urutan produk ───────────────
 let draggedProductIndex = null;
 
 productTable?.addEventListener("dragstart", e=>{
@@ -934,7 +885,7 @@ productTable?.addEventListener("drop", e=>{
   if(!g) return;
   const [moved] = g.products.splice(draggedProductIndex,1);
   g.products.splice(toIndex,0,moved);
-  g.products.forEach((p,i)=> p.sortOrder = i); // sinkron dengan kolom sort_order Supabase nanti
+  g.products.forEach((p,i)=> p.sortOrder = i);
   saveGames();
   renderProductTable();
   toast("Urutan produk diperbarui ✓");
@@ -955,7 +906,6 @@ function updateInlineProduct(row){
   saveGames();
 }
 
-// ─── PRODUCT EDITOR ──────────────────────────
 function openProductEditor(index=null){
   const g = activeGame();
   if(!g){ toast("Pilih game terlebih dahulu.","error"); return; }
@@ -1027,7 +977,6 @@ function updateProfitLine(){
 productForm?.addEventListener("input", updateProfitLine);
 productForm?.addEventListener("change", updateProfitLine);
 
-// ─── GLOBAL PRICE ADJUSTER ───────────────────
 document.querySelector("[data-apply-adjust]")?.addEventListener("click", async ()=>{
   const g = activeGame();
   if(!g){ toast("Pilih game terlebih dahulu.","error"); return; }
@@ -1055,7 +1004,6 @@ document.querySelector("[data-apply-adjust]")?.addEventListener("click", async (
   toast(`Harga ${g.name} berhasil disesuaikan ✓`);
 });
 
-// ─── MAINTENANCE EDITOR ──────────────────────
 function openMaintenanceEditor(gameId){
   const g = games.find(x=>x.id===gameId);
   if(!g) return;
@@ -1087,11 +1035,9 @@ async function saveMaintenance(){
   const type    = (typeRaw==="gangguan"||typeRaw==="segera-hadir") ? typeRaw : "maintenance";
   const newStatus = enabled ? type : "normal";
 
-  // Ringkasan perubahan untuk popup konfirmasi
   const oldLabel = gameStatusLabel(g.status);
   const newLabel = gameStatusLabel(newStatus);
   if(oldLabel === newLabel){
-    // Status levelnya sama, tapi mungkin jadwal/pesan berubah — tetap minta konfirmasi sederhana.
     const ok = await confirm("Konfirmasi Perubahan", [`Simpan pengaturan status untuk <b>${esc(g.name)}</b>?`]);
     if(!ok) return;
   } else {
@@ -1105,8 +1051,6 @@ async function saveMaintenance(){
   g.status = newStatus;
   let start = document.querySelector("[data-maintenance-start]").value;
   let end   = document.querySelector("[data-maintenance-end]").value;
-  // Kalau jam selesai yang terisi sudah lewat, itu bukan jadwal yang masih berlaku —
-  // abaikan supaya checkAutoMaintenance() tidak langsung mengembalikan status ke normal.
   if (end && new Date(end) <= new Date()) { start = ""; end = ""; }
   g.maintenance = {
     enabled,
@@ -1140,7 +1084,6 @@ function updateTelegramPreview(){
 maintenanceModal?.addEventListener("input",  updateTelegramPreview);
 maintenanceModal?.addEventListener("change", updateTelegramPreview);
 
-// ─── BULK MAINTENANCE ─────────────────────────
 document.querySelectorAll("[data-open-bulk-modal]").forEach(btn=>{
   btn.addEventListener("click", ()=> openModal(bulkModal));
 });
@@ -1191,7 +1134,6 @@ document.querySelector("[data-deactivate-bulk]")?.addEventListener("click", asyn
   toast("Semua game kembali aktif ✓");
 });
 
-// ─── SALES (PENJUALAN) ────────────────────────
 function isSameLocalDay(dateStr, target){
   if(!dateStr) return false;
   const d = new Date(dateStr);
@@ -1224,13 +1166,9 @@ function ordersThisYear(){
   return orders.filter(o=> new Date(o.date).getFullYear()===now.getFullYear());
 }
 
-// ─── halaman Penjualan: ringkasan berbasis KEUNTUNGAN ──
 function renderSalesSummary(){
-  // ✅ PERBAIKAN: Pakai tanggal dari filter jika ada, atau hari ini jika kosong
   const filterDate = salesDateFilter || new Date().toISOString().slice(0,10);
   const now = new Date(filterDate);
-
-  // Pakai orders asli (jangan difilter)
   const list = orders; 
 
   const todayList = list.filter(o => isSameLocalDay(o.date, now));
@@ -1266,14 +1204,12 @@ function populateSalesGameFilter(){
   sel.value = games.some(g=>g.id===current) ? current : "all";
 }
 
-// Filter: kalau pilih game tertentu dan game itu tidak ada transaksi, hasilnya kosong.
-// Pilih "Semua Game" baru menggabungkan seluruh transaksi.
 function getFilteredOrders(){
   return orders
     .filter(o=> salesGameFilter==="all" || o.gameId===salesGameFilter)
     .filter(o=> !salesDateFilter || (o.date && o.date.slice(0,10)===salesDateFilter))
     .filter(o=> !salesOrderIdFilter || (o.orderId && o.orderId.includes(salesOrderIdFilter)))
-    .filter(o=> !salesUserIdFilter || (o.buyer && o.buyer.includes(salesUserIdFilter))) // <-- TAMBAHKAN FILTER USER ID
+    .filter(o=> !salesUserIdFilter || (o.buyer && o.buyer.includes(salesUserIdFilter)))
     .sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -1283,7 +1219,7 @@ function renderSalesTable(){
   const list = getFilteredOrders();
 
   if(list.length===0){
-    body.innerHTML = `<tr><td colspan="9" class="empty-state">Belum ada transaksi tercatat untuk filter ini.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="empty-state">Belum ada transaksi tercatat untuk filter ini.</td></tr>`;
     return;
   }
 
@@ -1295,24 +1231,9 @@ function renderSalesTable(){
       <td>${esc(o.productName)}</td>
       <td>${esc(formatIdr(o.priceValue))}</td>
       <td class="is-profit">${esc(formatIdr(o.profitValue))}</td>
-      
       <td>
-        <span class="status-badge-table ${o.status === 'selesai' ? 'status-active' : 'status-scheduled'}">
-          ${o.status || 'menunggu'}
-        </span>
-      </td>
-
-      <!-- TAMBAHKAN KOLOM AKSI (Teks, bukan ikon) -->
-      <td>
-        <div class="row-actions" style="display:flex; gap:6px; flex-wrap:wrap;">
+        <div class="row-actions">
           <button class="mini-button" data-view-receipt="${esc(o.orderId)}">Lihat Struk</button>
-          
-          ${o.status === 'menunggu' ? `
-            <button class="mini-button" data-edit-sale="${esc(o.orderId)}">Edit</button>
-            <button class="mini-button" data-complete-sale="${esc(o.orderId)}">Selesaikan</button>
-            <button class="delete-button" data-cancel-sale="${esc(o.orderId)}">Batal</button>
-          ` : ''}
-          
           <button class="delete-button" data-delete-sale="${esc(o.orderId)}">Hapus</button>
         </div>
       </td>
@@ -1333,7 +1254,6 @@ function renderSalesPage(){
   renderSalesTable();
 }
 
-// ─── halaman Modal: rekap total modal yang keluar, dikelompokkan per game ──
 function renderCapitalPage(){
   const today = ordersToday();
   const month = ordersThisMonth();
@@ -1364,7 +1284,6 @@ function renderCapitalPage(){
     return;
   }
 
-  // Kelompokkan transaksi per game
   const byGame = {};
   orders.forEach(o=>{
     const key = o.gameId || o.gameName || "-";
@@ -1388,9 +1307,13 @@ function renderCapitalPage(){
   `).join("");
 }
 
-// ─── SALE MODAL: harga jual & modal otomatis dari katalog produk ──
 function populateSaleForm(){
   const gameSel = document.querySelector("[data-sale-game]");
+  if(!gameSel) return;
+  if(!games || games.length === 0){
+    gameSel.innerHTML = `<option value="">(Belum ada game)</option>`;
+    return;
+  }
   gameSel.innerHTML = games.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
   populateSaleProductOptions();
   document.querySelector("[data-sale-buyer]").value = "";
@@ -1403,20 +1326,35 @@ function populateSaleProductOptions(){
   const gameId = document.querySelector("[data-sale-game]").value;
   const game = games.find(g=>g.id===gameId);
   const productSel = document.querySelector("[data-sale-product]");
-  const products = game ? game.products : [];
-  productSel.innerHTML = products.length
-    ? products.map(p=>`<option value="${esc(p.name)}" data-price="${esc(parseMoney(p.sellingPrice||p.price))}" data-cost="${esc(parseMoney(p.costPrice))}">${esc(p.name)}</option>`).join("")
-    : `<option value="">(Game ini belum punya produk)</option>`;
+  if(!productSel) return;
+  if(!game || !game.products || game.products.length === 0){
+    productSel.innerHTML = `<option value="">(Game ini belum punya produk)</option>`;
+    applySaleProductPrice();
+    return;
+  }
+  productSel.innerHTML = game.products.map(p=>`
+    <option value="${esc(p.name)}" 
+            data-price="${esc(parseMoney(p.sellingPrice||p.price))}" 
+            data-cost="${esc(parseMoney(p.costPrice))}">
+      ${esc(p.name)}
+    </option>
+  `).join("");
   applySaleProductPrice();
 }
 
 function applySaleProductPrice(){
   const productSel = document.querySelector("[data-sale-product]");
+  if(!productSel) return;
   const opt = productSel.selectedOptions[0];
+  if(!opt){
+    document.querySelector("[data-sale-price]").value = "";
+    document.querySelector("[data-sale-cost]").value = "";
+    document.querySelector("[data-sale-profit-preview]").textContent = "Rp0";
+    return;
+  }
   const price = Number(opt?.dataset.price || 0);
   const cost  = Number(opt?.dataset.cost  || 0);
   const profit = price - cost;
-
   document.querySelector("[data-sale-price]").value = formatIdr(price);
   document.querySelector("[data-sale-cost]").value  = formatIdr(cost);
   const profitEl = document.querySelector("[data-sale-profit-preview]");
@@ -1467,21 +1405,20 @@ function saveSaleFromForm(){
 
   const priceValue = Number(selectedOpt?.dataset.price || 0);
   const costValue  = Number(selectedOpt?.dataset.cost  || 0);
-  const profitValue= Math.max(0, priceValue - costValue); // <-- PERBAIKAN UNTUNG
+  const profitValue= Math.max(0, priceValue - costValue);
 
   const buyer  = document.querySelector("[data-sale-buyer]").value.trim();
   const nick   = document.querySelector("[data-sale-nick]").value.trim();
   const ref    = document.querySelector("[data-sale-ref]").value.trim();
   const qrText = document.querySelector("[data-sale-qrtext]").value.trim();
 
-  // ✅ AMBIL TANGGAL DARI INPUT FORM
   const dateInput = document.querySelector("[data-sale-date]").value;
   const now = new Date();
   const selectedDate = dateInput || now.toISOString().slice(0,10);
 
   const order = {
     orderId: generateOrderId(),
-    date: selectedDate,                     // <-- Pakai tanggal pilihan user
+    date: selectedDate,
     createdAt: now.toISOString(),
     gameId: game?.id || "",
     gameName: game?.name || "-",
@@ -1493,7 +1430,6 @@ function saveSaleFromForm(){
     nick,
     ref,
     qrText,
-    status: "menunggu", // status default
   };
 
   saveOrderSafely(order);
@@ -1504,86 +1440,9 @@ function saveSaleFromForm(){
   openReceipt(order.orderId);
 }
 
-// ─── EVENT LISTENER UNTUK TABEL PENJUALAN ────────────────────
 document.querySelector("[data-sales-table-body]")?.addEventListener("click", async e=>{
   const viewBtn = e.target.closest("[data-view-receipt]");
   if(viewBtn){ openReceipt(viewBtn.dataset.viewReceipt); return; }
-
-  const editBtn = e.target.closest("[data-edit-sale]");
-  if(editBtn){
-    const orderId = editBtn.dataset.editSale;
-    const order = orders.find(o=>o.orderId===orderId);
-    if(!order){ toast("Order tidak ditemukan","error"); return; }
-
-    // --- BUKA FORM CATAT PENJUALAN DENGAN DATA TERISI ---
-    const gameSelect = document.querySelector("[data-sale-game]");
-    const productSelect = document.querySelector("[data-sale-product]");
-    const dateInput = document.querySelector("[data-sale-date]");
-    const buyerInput = document.querySelector("[data-sale-buyer]");
-    const nickInput = document.querySelector("[data-sale-nick]");
-    const refInput = document.querySelector("[data-sale-ref]");
-
-    if(gameSelect){
-      gameSelect.value = order.gameId;
-      gameSelect.dispatchEvent(new Event("change"));
-    }
-
-    setTimeout(() => {
-      if(productSelect){
-        const options = [...productSelect.options];
-        const targetOption = options.find(opt => opt.text === order.productName);
-        if(targetOption) productSelect.value = targetOption.value;
-        productSelect.dispatchEvent(new Event("change"));
-      }
-    }, 100);
-
-    if(dateInput) dateInput.value = order.date;
-    if(buyerInput) buyerInput.value = order.buyer || "";
-    if(nickInput) nickInput.value = order.nick || "";
-    if(refInput) refInput.value = order.ref || "";
-
-    openModal(saleModal);
-    return;
-  }
-
-  const completeBtn = e.target.closest("[data-complete-sale]");
-  if(completeBtn){
-    const orderId = completeBtn.dataset.completeSale;
-    const order = orders.find(o=>o.orderId===orderId);
-    if(!order){ toast("Order tidak ditemukan","error"); return; }
-    
-    const ok = await confirm("Selesaikan Transaksi", `Tandai transaksi #${orderId} sebagai SELESAI?`);
-    if(!ok) return;
-    
-    // ✅ SAAT ADMIN KLIK SELESAIKAN, WAKTU DICATAT DI SINI
-    const now = new Date();
-    order.status = "selesai";
-    order.completedAt = now.toISOString(); // Simpan waktu selesai
-    order.createdAt = now.toISOString();   // (Opsional) overwrite createdAt jika mau pakai waktu selesai
-    
-    saveOrders();
-    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
-    renderSalesPage();
-    toast("Transaksi ditandai selesai ✓");
-    return;
-  }
-
-  const cancelBtn = e.target.closest("[data-cancel-sale]");
-  if(cancelBtn){
-    const orderId = cancelBtn.dataset.cancelSale;
-    const order = orders.find(o=>o.orderId===orderId);
-    if(!order){ toast("Order tidak ditemukan","error"); return; }
-    
-    const ok = await confirm("Batalkan Transaksi", `Batalkan transaksi #${orderId}?`);
-    if(!ok) return;
-    
-    order.status = "batal";
-    saveOrders();
-    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
-    renderSalesPage();
-    toast("Transaksi dibatalkan");
-    return;
-  }
 
   const delBtn = e.target.closest("[data-delete-sale]");
   if(delBtn){
@@ -1594,11 +1453,9 @@ document.querySelector("[data-sales-table-body]")?.addEventListener("click", asy
     const ok = await confirm("Hapus Transaksi", `Hapus transaksi #${orderId}? Data akan dihapus dari localStorage dan Supabase.`);
     if(!ok) return;
 
-    // 1. Hapus dari localStorage
     orders = orders.filter(o=>o.orderId!==orderId);
     saveOrders();
     
-    // 2. Hapus dari Supabase (async, jangan tunggu)
     try {
       if (typeof window.scDeleteOrder === "function") {
         await window.scDeleteOrder(orderId);
@@ -1623,7 +1480,7 @@ document.querySelector("[data-sales-orderid-filter]")?.addEventListener("input",
 });
 document.querySelector("[data-sales-date-filter]")?.addEventListener("change", e=>{
   salesDateFilter = e.target.value;
-  renderSalesPage(); // <-- tambahkan ini agar statistik ikut update saat filter berubah
+  renderSalesPage();
 });
 document.querySelector("[data-sales-game-filter]")?.addEventListener("change", e=>{
   salesGameFilter = e.target.value;
@@ -1649,7 +1506,6 @@ document.querySelector("[data-sales-clear-filter]")?.addEventListener("click", (
   renderSalesPage();
 });
 
-// ─── RECEIPT (STRUK) ──────────────────────────
 function openReceipt(orderId){
   const order = orders.find(o=>o.orderId===orderId);
   if(!order){ toast("Transaksi tidak ditemukan","warn"); return; }
@@ -1729,8 +1585,6 @@ async function downloadReceiptPdf(){
   }
 }
 
-// ─── AUTO-MAINTENANCE TICK ───────────────────
-// Check every minute if scheduled maintenance should toggle game status
 function checkAutoMaintenance(){
   const now = new Date();
   let changed = false;
@@ -1763,13 +1617,8 @@ function checkAutoMaintenance(){
   if(currentPage==="dashboard") renderDashboard();
 }
 
-setInterval(checkAutoMaintenance, 10000); // every 10s
+setInterval(checkAutoMaintenance, 10000);
 
-// ─── AUTO PROMO CHECK ─────────────────────────
-// Cek promo expired/active setiap 10 detik.
-// Jika ada produk promo expired → set status soldout, simpan ke localStorage,
-// DAN langsung push ke Supabase (bypass draft queue) supaya setelah refresh
-// data tidak balik ke semula.
 function checkAutoPromo(){
   const now = new Date();
   const affectedGames = [];
@@ -1782,21 +1631,18 @@ function checkAutoPromo(){
 
       const start = p.promoStart ? new Date(p.promoStart) : null;
       const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
-      if(!end) return; // promo manual tanpa jadwal, skip
+      if(!end) return;
 
       const isExpired   = end < now;
       const isScheduled = start && start > now;
       const isActive    = !isScheduled && !isExpired;
 
-      // Promo expired → otomatis soldout, tandai dengan flag supaya bisa di-reset
       if(isExpired && p.status === "normal"){
         p.status = "soldout";
         p._promoAutoSoldout = true;
         gameChanged = true;
       }
 
-      // Promo aktif kembali (admin perpanjang jadwal) → reset hanya kalau
-      // soldout-nya memang dari auto-expired, bukan dari admin manual.
       if(isActive && p._promoAutoSoldout && p.status === "soldout"){
         p.status = "normal";
         p._promoAutoSoldout = false;
@@ -1807,17 +1653,11 @@ function checkAutoPromo(){
   });
 
   if(affectedGames.length){
-    // Simpan ke localStorage
     saveGames();
-    // Push langsung ke Supabase (bypass draft queue) — ini perubahan otomatis
-    // sistem, bukan edit admin, jadi tidak perlu lewat "Draft Perubahan".
-    // Setelah push, update syncedSnapshot di draft-queue supaya perubahan ini
-    // tidak muncul sebagai "Belum Disimpan" di halaman Draft.
     if(window.scPushSingleGame){
       affectedGames.forEach(async g=>{
         try{
           await window.scPushSingleGame(g);
-          // Update snapshot supaya draft-queue tidak mendeteksi ini sebagai dirty
           if(window.GlacierDraft) window.GlacierDraft.snapshotAllGamesAsSynced();
         }catch(e){
           console.warn("checkAutoPromo: gagal push ke Supabase, akan dicoba interval berikutnya:", e);
@@ -1827,16 +1667,12 @@ function checkAutoPromo(){
     if(currentPage==="products") renderProductPage();
   }
 
-  // Re-render tabel promo label (scheduled/active/expired) meski tidak ada perubahan status
-  // supaya label badge terupdate otomatis saat waktu berubah.
   if(currentPage==="products") renderProductTable();
 }
 
-setInterval(checkAutoPromo, 10000); // every 10s
+setInterval(checkAutoPromo, 10000);
 
-// ─── INIT ─────────────────────────────────────
-saveGames(); // normalize on boot
+saveGames();
 navigateTo("dashboard");
 
-// Ekspos fungsi readOrders ke global agar bisa dipanggil dari HTML
 window.readOrders = readOrders;

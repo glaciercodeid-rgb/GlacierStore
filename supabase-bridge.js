@@ -1,21 +1,13 @@
 // ─────────────────────────────────────────────
 //  GlacierStore — supabase-bridge.js
-//  Jembatan localStorage <-> Supabase.
-//  Tidak mengubah logic bisnis di admin.js/script.js sama sekali —
-//  cuma menyuntik data terbaru ke localStorage (pull) dan mendorong
-//  balik perubahan ke Supabase (push, admin.html saja).
 // ─────────────────────────────────────────────
 (function () {
   const STORAGE_KEY  = window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1";
   const SETTINGS_KEY = window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1";
 
-  // Konversi string datetime lokal (dari <input type="datetime-local">, format "YYYY-MM-DDTHH:mm")
-  // ke ISO string DENGAN offset timezone lokal browser, supaya Supabase (timestamptz)
-  // menyimpan waktu yang benar — bukan diinterpretasikan sebagai UTC.
-  // Contoh input WIB: "2026-07-09T00:05" -> "2026-07-09T00:05:00+07:00"
   function toLocalISO(v) {
     if (!v) return null;
-    const d = new Date(v); // browser parse sebagai local time
+    const d = new Date(v);
     if (isNaN(d)) return null;
     const off = -d.getTimezoneOffset();
     const sign = off >= 0 ? "+" : "-";
@@ -26,21 +18,15 @@
            `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${hh}:${mm2}`;
   }
 
-  // Normalisasi datetime dari Supabase (ISO dengan offset) ke "YYYY-MM-DDTHH:mm" local time
-  // supaya getPromoStatus() di script.js membandingkan apples-to-apples.
   function fromSupabaseDate(v) {
     if (!v) return "";
-    const d = new Date(v); // Supabase kirim ISO+offset, new Date() parse ke local
+    const d = new Date(v);
     if (isNaN(d)) return "";
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T` +
            `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  // Ambil data terbaru dari Supabase -> tulis ke localStorage dengan format
-  // yang SAMA PERSIS seperti yang dipakai admin.js/script.js selama ini.
-  // Kalau Supabase kosong/gagal diakses, localStorage tidak disentuh
-  // (otomatis fallback ke data lama / DEFAULT_GAMES).
   async function scPullCatalog() {
     const sb = window.supabaseClient;
     const [gamesRes, productsRes, settingsRes] = await Promise.all([
@@ -49,7 +35,7 @@
       sb.from("settings").select("value").eq("key", "site_settings").maybeSingle(),
     ]);
     if (gamesRes.error) throw gamesRes.error;
-    if (!gamesRes.data || !gamesRes.data.length) return false; // belum ada data -> biarkan default
+    if (!gamesRes.data || !gamesRes.data.length) return false;
 
     const products = productsRes.data || [];
     const games = gamesRes.data.map((g) => ({
@@ -91,10 +77,6 @@
     return true;
   }
 
-  // Dorong state `games` (dari admin.js) ke Supabase.
-  // Strategi: upsert semua games, hapus game yang sudah tidak ada,
-  // lalu replace total tabel products untuk game-game yang tersisa
-  // (paling sederhana & aman, katalog cuma puluhan baris jadi murah).
   async function scPushCatalog(games) {
     const sb = window.supabaseClient;
 
@@ -152,32 +134,13 @@
     if (error) throw error;
   }
 
-  // ─── ANTRIAN SERIAL untuk push (cegah race condition) ──────────
-  // Masalah sebelumnya: scPushCatalog melakukan "hapus semua produk →
-  // insert ulang semua". Kalau saveGames() dipanggil dua kali berturut-turut
-  // dengan cepat (misal drag-reorder lalu langsung toggle status), DUA proses
-  // push bisa jalan BERSAMAAN dan saling tabrakan — proses kedua bisa
-  // menghapus data yang baru ditulis proses pertama sebelum sempat insert ulang,
-  // membuat produk hilang sementara/permanen.
-  //
-  // Solusinya: setiap panggilan push masuk ke satu antrian yang dijalankan
-  // SATU PER SATU (serial, tidak paralel). Kalau ada beberapa panggilan
-  // menumpuk sebelum antrian sempat jalan, yang benar-benar dikirim ke
-  // Supabase cuma STATE TERAKHIR (yang paling baru) — bukan berkali-kali
-  // dengan data yang sudah usang. Ini disebut pola "coalescing queue".
   let gamesPushChain = Promise.resolve();
   let pendingGamesState = null;
 
   function scPushCatalogSafe(games) {
-    // Simpan snapshot state terbaru. Kalau dipanggil lagi sebelum antrian
-    // sempat jalan, snapshot ini akan DITIMPA oleh yang lebih baru —
-    // otomatis "melompati" state lama yang sudah usang.
     pendingGamesState = games;
-
     gamesPushChain = gamesPushChain
       .then(async () => {
-        // Ambil state terbaru yang tersedia SAAT giliran ini benar-benar jalan,
-        // bukan state saat scPushCatalogSafe() dipanggil.
         if (pendingGamesState === null) return;
         const toPush = pendingGamesState;
         pendingGamesState = null;
@@ -186,7 +149,6 @@
       .catch((e) => {
         console.error("Gagal sync games ke Supabase:", e);
       });
-
     return gamesPushChain;
   }
 
@@ -195,7 +157,6 @@
 
   function scPushSettingsSafe(settings) {
     pendingSettingsState = settings;
-
     settingsPushChain = settingsPushChain
       .then(async () => {
         if (pendingSettingsState === null) return;
@@ -206,13 +167,9 @@
       .catch((e) => {
         console.error("Gagal sync settings ke Supabase:", e);
       });
-
     return settingsPushChain;
   }
 
-  // Push SATU game saja (game row + produk-produknya), tidak menyentuh
-  // game lain sama sekali. Dipakai oleh sistem Draft/Antrian supaya tiap
-  // "Update" hanya memengaruhi game yang benar-benar diubah.
   async function scPushSingleGame(game) {
     const sb = window.supabaseClient;
 
@@ -256,8 +213,6 @@
 
   window.scPushSingleGame = scPushSingleGame;
 
-  // Hapus satu game dari Supabase. Produk-produknya ikut terhapus otomatis
-  // lewat "on delete cascade" di skema tabel products (lihat 01_setup.sql).
   async function scDeleteGame(gameId) {
     const sb = window.supabaseClient;
     const { error } = await sb.from("games").delete().eq("id", gameId);
@@ -271,66 +226,58 @@
   window.scPushSettings = scPushSettings;
   window.scPushSettingsSafe = scPushSettingsSafe;
 
-  // ─── PUSH ORDERS KE SUPABASE ──────────────────────────────
-async function scPushOrder(order) {
-  const sb = window.supabaseClient;
-  const { error } = await sb.from("sales").insert({
-    order_id: order.orderId,
-    date: order.date,
-    game_id: order.gameId,
-    game_name: order.gameName,
-    product_name: order.productName,
-    price_value: order.priceValue,
-    cost_value: order.costValue,
-    profit_value: order.profitValue,
-    buyer: order.buyer,
-    nick: order.nick,
-    ref: order.ref,
-    qr_text: order.qrText,
-    status: order.status || "menunggu", // <-- TAMBAHKAN STATUS
-  });
-  if (error) throw error;
-}
-
-// ─── PULL ORDERS DARI SUPABASE ─────────────────────────────
-async function scPullOrders() {
-  const sb = window.supabaseClient;
-  const { data, error } = await sb.from("sales").select("*").order("created_at", { ascending: false });
-  if (error) throw error;
-  if (data && data.length) {
-    // Konversi ke format yang sama dengan orders di admin.js
-    const formatted = data.map(o => ({
-      orderId: o.order_id,
-      date: o.date,
-      gameId: o.game_id,
-      gameName: o.game_name,
-      productName: o.product_name,
-      priceValue: Number(o.price_value),
-      costValue: Number(o.cost_value),
-      profitValue: Number(o.profit_value),
-      buyer: o.buyer || "",
-      nick: o.nick || "",
-      ref: o.ref || "",
-      qrText: o.qr_text || "",
-      createdAt: o.created_at,
-      status: o.status || "menunggu", // <-- TAMBAHKAN STATUS
-    }));
-    localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
-    return true;
+  async function scPushOrder(order) {
+    const sb = window.supabaseClient;
+    const { error } = await sb.from("sales").insert({
+      order_id: order.orderId,
+      date: order.date,
+      game_id: order.gameId,
+      game_name: order.gameName,
+      product_name: order.productName,
+      price_value: order.priceValue,
+      cost_value: order.costValue,
+      profit_value: order.profitValue,
+      buyer: order.buyer,
+      nick: order.nick,
+      ref: order.ref,
+      qr_text: order.qrText,
+    });
+    if (error) throw error;
   }
-  return false;
-}
 
-// Ekspos ke global agar bisa dipanggil dari admin.js
-window.scPushOrder = scPushOrder;
-window.scPullOrders = scPullOrders;
+  async function scPullOrders() {
+    const sb = window.supabaseClient;
+    const { data, error } = await sb.from("sales").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    if (data && data.length) {
+      const formatted = data.map(o => ({
+        orderId: o.order_id,
+        date: o.date,
+        gameId: o.game_id,
+        gameName: o.game_name,
+        productName: o.product_name,
+        priceValue: Number(o.price_value),
+        costValue: Number(o.cost_value),
+        profitValue: Number(o.profit_value),
+        buyer: o.buyer || "",
+        nick: o.nick || "",
+        ref: o.ref || "",
+        qrText: o.qr_text || "",
+        createdAt: o.created_at,
+      }));
+      localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
+      return true;
+    }
+    return false;
+  }
 
-// ─── HAPUS ORDER DARI SUPABASE ──────────────────────────────
-async function scDeleteOrder(orderId) {
-  const sb = window.supabaseClient;
-  const { error } = await sb.from("sales").delete().eq("order_id", orderId);
-  if (error) throw error;
-}
-window.scDeleteOrder = scDeleteOrder;
+  window.scPushOrder = scPushOrder;
+  window.scPullOrders = scPullOrders;
 
+  async function scDeleteOrder(orderId) {
+    const sb = window.supabaseClient;
+    const { error } = await sb.from("sales").delete().eq("order_id", orderId);
+    if (error) throw error;
+  }
+  window.scDeleteOrder = scDeleteOrder;
 })();
