@@ -529,7 +529,7 @@ function showMaintenanceGate() {
   // mengaktifkan "Tampilkan Tombol Hubungi Admin" di pengaturan maintenance.
   // Untuk popup gate lain (offline biasa), tombol ini selalu tetap tampil.
   const urgentBtn = document.querySelector("[data-urgent-contact]");
-  if (urgentBtn) urgentBtn.hidden = maintenance.contactUrgent === false;
+if (urgentBtn) urgentBtn.hidden = !maintenance.contactUrgent;
 }
 
 function openDrawer() {
