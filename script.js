@@ -96,7 +96,12 @@ function getOperationalState(now = new Date()) {
 
   const manuallyClosed = Boolean(hours.manualClosed);
 
-  return { online: !manuallyClosed && (!hours.autoOffline || online), open, close, nextOpen };
+  return { 
+    online: !manuallyClosed && (!hours.autoOffline || online), 
+    open, 
+    close, 
+    nextOpen 
+  };
 }
 
 function formatDuration(ms) {
@@ -139,8 +144,22 @@ function isGlobalMaintenanceActive(now = new Date()) {
   return true;
 }
 
+function generateOrderId(){
+  let id;
+  let attempts = 0;
+  do{
+    id = String(Math.floor(100000 + Math.random() * 900000));
+    attempts++;
+    if(attempts > 500) id = String(Math.floor(1000000 + Math.random() * 9000000));
+  }while(orders.some(o=>o.orderId===id));
+  return id;
+}
+
+function parseMoney(v){ return Number(String(v||"").replace(/[^0-9]/g,"")) || 0; }
+
 let games = readStoredGames();
 let settings = readSettings();
+let orders = [];
 
 const header = document.querySelector("[data-header]");
 const gameGrid = document.querySelector("[data-game-grid]");
@@ -443,8 +462,15 @@ function openContactModal() {
     showMaintenanceGate();
     return;
   }
+  
   const state = getOperationalState();
-  if (!state.online && settings.adminHours?.autoOffline) {
+  const hours = settings.adminHours || {};
+  
+  const shouldShowOfflineGate = 
+    (!state.online && hours.autoOffline) || 
+    (hours.manualClosed === true);
+
+  if (shouldShowOfflineGate) {
     openGate(
       "Admin sedang offline",
       "Kamu tetap bisa menghubungi admin, tapi pesanan diproses saat admin online.",
@@ -471,6 +497,7 @@ function openGate(title, message, untilDate, locked, options = {}) {
   document.querySelector("[data-gate-title]").textContent = title;
   document.querySelector("[data-gate-message]").textContent = message;
   document.querySelector("[data-gate-modal]").classList.toggle("is-locked-gate", locked);
+  
   const urgentBtn = document.querySelector("[data-urgent-contact]");
   if (urgentBtn) {
     const maintenance = settings.systemMaintenance || {};
@@ -484,7 +511,9 @@ function openGate(title, message, untilDate, locked, options = {}) {
   gateModal.classList.add("is-open");
   gateModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
-  updateGateCountdown(untilDate);
+
+  // ⚠️ BARIS INI SAYA HAPUS (komentari) biar startTicker yang handle countdown
+  // updateGateCountdown(untilDate);
 }
 
 function updateGateCountdown(untilDate) {
