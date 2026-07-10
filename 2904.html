@@ -169,16 +169,18 @@
           <div class="table-wrap">
             <table class="product-table">
               <thead>
-              <tr>
-                <th>Tanggal</th>
-                <th>Order ID</th>
-                <th>Game</th>
-                <th>Nominal</th>
-                <th>Harga</th>
-                <th>Untung</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
+                <tr>
+                  <th></th>
+                  <th>Nama Produk</th>
+                  <th>Harga Modal</th>
+                  <th>Harga Jual</th>
+                  <th>Promo</th>
+                  <th>Harga Promo</th>
+                  <th>Status Promo</th>
+                  <th>Status Produk</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
               <tbody data-product-table></tbody>
             </table>
           </div>
@@ -593,7 +595,7 @@
           </label>
           <div class="settings-grid">
             <label>
-              Harga Jual (otomatis)
+              Harga Efektif <span data-sale-price-label style="font-weight:400;color:#5f6672">(otomatis)</span>
               <input type="text" data-sale-price readonly />
             </label>
             <label>

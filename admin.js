@@ -1332,13 +1332,33 @@ function populateSaleProductOptions(){
     applySaleProductPrice();
     return;
   }
-  productSel.innerHTML = game.products.map(p=>`
-    <option value="${esc(p.name)}" 
-            data-price="${esc(parseMoney(p.sellingPrice||p.price))}" 
-            data-cost="${esc(parseMoney(p.costPrice))}">
-      ${esc(p.name)}
+  productSel.innerHTML = game.products.map(p=>{
+    // Cek apakah promo sedang aktif sekarang
+    const now = new Date();
+    let promoActive = false;
+    if(p.promo && p.promoPrice){
+      const start = p.promoStart ? new Date(p.promoStart) : null;
+      const end   = p.promoEnd   ? new Date(p.promoEnd)   : null;
+      if(!start && !end) promoActive = true;          // promo tanpa jadwal = selalu aktif
+      else if(start && !end) promoActive = now >= start;
+      else if(!start && end) promoActive = now <= end;
+      else promoActive = now >= start && now <= end;
+    }
+    // Harga efektif: pakai promoPrice kalau promo aktif, sellingPrice kalau tidak
+    const effectivePrice = promoActive
+      ? parseMoney(p.promoPrice)
+      : parseMoney(p.sellingPrice || p.price);
+    return `
+    <option value="${esc(p.name)}"
+            data-price="${esc(effectivePrice)}"
+            data-cost="${esc(parseMoney(p.costPrice))}"
+            data-promo-active="${promoActive ? '1' : '0'}"
+            data-promo-price="${esc(parseMoney(p.promoPrice||'0'))}"
+            data-selling-price="${esc(parseMoney(p.sellingPrice||p.price||'0'))}">
+      ${esc(p.name)}${promoActive ? ' 🏷️' : ''}
     </option>
-  `).join("");
+  `;
+  }).join("");
   applySaleProductPrice();
 }
 
@@ -1355,8 +1375,19 @@ function applySaleProductPrice(){
   const price = Number(opt?.dataset.price || 0);
   const cost  = Number(opt?.dataset.cost  || 0);
   const profit = price - cost;
+  const promoActive = opt?.dataset.promoActive === "1";
   document.querySelector("[data-sale-price]").value = formatIdr(price);
   document.querySelector("[data-sale-cost]").value  = formatIdr(cost);
+
+  // Update label "Harga Efektif" biar jelas dari mana harganya
+  const priceLabel = document.querySelector("[data-sale-price-label]");
+  if(priceLabel){
+    priceLabel.textContent = promoActive
+      ? "(🏷️ Harga Promo aktif)"
+      : "(Harga Jual normal)";
+    priceLabel.style.color = promoActive ? "#0b8f87" : "#5f6672";
+  }
+
   const profitEl = document.querySelector("[data-sale-profit-preview]");
   if(profitEl){
     profitEl.textContent = formatIdr(profit);
