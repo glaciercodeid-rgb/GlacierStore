@@ -440,7 +440,6 @@ function showContactModal() {
   const showsZoneId = zoneIdField && !zoneIdField.hidden;
   const zoneId = showsZoneId ? (document.querySelector("[data-zone-id]").value.trim() || "-") : "";
   
-  // ✅ SEKARANG ZONE ID SUDAH MASUK KE PESAN
   const message = encodeURIComponent(
     `Halo admin ${settings.brandName || "GlacierStore"}, saya mau top up.\nGame: ${game?.name || "-"}\nNominal: ${product?.name || "-"}\nHarga: ${product?.price || "-"}\nUser ID: ${userId}` +
     (showsZoneId ? `\nZone ID: ${zoneId}` : "")
@@ -524,12 +523,24 @@ function closeGate() {
 
 function showMaintenanceGate() {
   const maintenance = settings.systemMaintenance || {};
-  openGate("Kami sedang melakukan pemeliharaan sistem", maintenance.message || "Website sedang dalam pemeliharaan.", maintenance.end, true);
-  // Tombol "Hubungi Admin" di popup ini cuma boleh muncul kalau admin
-  // mengaktifkan "Tampilkan Tombol Hubungi Admin" di pengaturan maintenance.
-  // Untuk popup gate lain (offline biasa), tombol ini selalu tetap tampil.
+  
+  // Pastikan popup maintenance tetap muncul
+  openGate(
+    "Kami sedang melakukan pemeliharaan sistem",
+    maintenance.message || "Website sedang dalam pemeliharaan.",
+    maintenance.end,
+    true
+  );
+  
+  // Paksa tombol "Hubungi Admin" hilang jika contactUrgent false
   const urgentBtn = document.querySelector("[data-urgent-contact]");
-if (urgentBtn) urgentBtn.hidden = !maintenance.contactUrgent;
+  if (urgentBtn) {
+    if (maintenance.contactUrgent === false) {
+      urgentBtn.style.display = "none";   // Hilangkan tombol
+    } else {
+      urgentBtn.style.display = "";       // Tampilkan tombol (jika true)
+    }
+  }
 }
 
 function openDrawer() {
