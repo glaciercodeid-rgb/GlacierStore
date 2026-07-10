@@ -1224,7 +1224,9 @@ function ordersThisYear(){
 
 // ─── halaman Penjualan: ringkasan berbasis KEUNTUNGAN ──
 function renderSalesSummary(){
-  const list = getFilteredOrders(); // ikut filter game & tanggal yang aktif
+  // ✅ PERBAIKAN: pakai orders asli, bukan hasil filter
+  const list = orders; 
+  
   const now  = new Date();
 
   const todayList = list.filter(o=> isSameLocalDay(o.date, now));
