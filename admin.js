@@ -1520,7 +1520,7 @@ function openReceipt(orderId){
   if(logoSlot){
     logoSlot.innerHTML = "";
     const img = document.createElement("img");
-    img.src = "logo-icon.png";
+    img.src = "/assets/logo-icon.png";
     img.alt = brand;
     img.style.cssText = "height:56px;width:auto;display:block;margin:0 auto 4px;";
     logoSlot.appendChild(img);
