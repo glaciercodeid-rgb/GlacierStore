@@ -1955,3 +1955,13 @@ button {
     transform: none !important;
   }
 }
+
+/* Khusus menyembunyikan kolom Zone ID */
+label[data-zone-id-field] {
+  display: none !important;
+}
+
+/* Saat kolom Zone ID harus muncul (untuk Mobile Legends), override dengan display: block */
+label[data-zone-id-field]:not([hidden]) {
+  display: block !important;
+}
