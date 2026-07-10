@@ -649,3 +649,22 @@ renderPrices(true);
 updateZoneIdVisibility();
 if (isGlobalMaintenanceActive()) showMaintenanceGate();
 startTicker();
+
+
+// ─── CEgAH URL BERUBAH SAAT KLIK LINK ANCHOR ─────────────────
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener("click", function(e) {
+    const href = this.getAttribute("href");
+    // Kalau linknya cuma "#" doang (kosong), skip aja
+    if (href === "#") return;
+    
+    e.preventDefault(); // INI KUNCI: Mencegah URL berubah
+    
+    const targetElement = document.querySelector(href);
+    if (targetElement) {
+      const headerHeight = document.querySelector(".site-header")?.offsetHeight || 64;
+      const topPosition = targetElement.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({ top: topPosition, behavior: "smooth" });
+    }
+  });
+});
