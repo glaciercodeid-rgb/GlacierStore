@@ -655,10 +655,13 @@ startTicker();
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener("click", function(e) {
     const href = this.getAttribute("href");
-    // Kalau linknya cuma "#" doang (kosong), skip aja
+    // Kalau linknya cuma "#" doang, skip
     if (href === "#") return;
     
-    e.preventDefault(); // INI KUNCI: Mencegah URL berubah
+    // TAMBAHKAN BARIS INI: Lewati link yang bukan anchor (seperti WhatsApp/Telegram)
+    if (!href.startsWith("#")) return; 
+
+    e.preventDefault();
     
     const targetElement = document.querySelector(href);
     if (targetElement) {
