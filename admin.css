@@ -1187,57 +1187,55 @@ textarea {
 
 /* ─── KERTAS STRUK ─────────────────────────── */
 .receipt-paper {
-  width: 320px;
+  width: 380px;
   max-width: 100%;
   margin: 0 auto;
   background: #fff;
-  border-radius: 4px;
-  padding: 24px 20px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  text-align: left;
+  font-family: Arial, sans-serif;
+  color: #14171f;
 }
 
 /* ─── LOGO ─────────────────────────────────── */
 .receipt-logo-slot {
-  width: auto;
-  height: auto;
-  margin: 0 auto 8px;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 10px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .receipt-logo-slot img {
-  height: 48px;
-  width: auto;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  display: block;
-  margin: 0 auto;
 }
 
 /* ─── HEADER TEKS ──────────────────────────── */
 .receipt-brand {
   margin: 0;
   text-align: center;
-  font-family: "Exo 2", Arial, sans-serif;
-  font-size: 18px;
+  font-family: Arial, sans-serif;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 2px;
-  color: #1a1a1a;
+  letter-spacing: 0.01em;
+  color: #14171f;
 }
 .receipt-sub {
   text-align: center;
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: #888;
+  margin: 4px 0 15px;
+  font-size: 13px;
+  color: #555;
 }
 
 /* ─── GARIS PUTUS-PUTUS ────────────────────── */
 .receipt-divider {
   border: none;
-  border-top: 1px dashed #999;
-  margin: 12px 0;
+  border-top: 2px dashed #000;
+  margin: 15px 0;
 }
 .receipt-thin-line {
   border: none;
@@ -1245,121 +1243,76 @@ textarea {
   margin: 6px 0;
 }
 
-/* ─── BARIS UMUM ───────────────────────────── */
+/* ─── BARIS UMUM — font tebal, tinta gelap ─── */
 .receipt-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  margin: 5px 0;
-  color: #1a1a1a;
+  gap: 10px;
+  font-size: 15px;
+  margin: 7px 0;
+  text-align: left;
+  color: #14171f;
 }
-.receipt-row span { color: #1a1a1a; }
+.receipt-row span { color: #14171f; }
 
 /* ─── NAMA PRODUK ──────────────────────────── */
 .receipt-product-row {
-  font-size: 13px;
-  margin-bottom: 2px;
-  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 15px;
+  color: #14171f;
 }
+
 /* harga normal dicoret = SATU-SATUNYA yang samar */
 .receipt-price-strike {
   text-decoration: line-through;
-  color: #bbb !important;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.receipt-product-row.no-promo .receipt-price-normal {
-  text-decoration: none;
-  color: #1a1a1a;
+  color: #aaa !important;
   font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 /* ─── BARIS DISKON (MERAH) ─────────────────── */
-.receipt-discount-row {
-  margin: 2px 0;
-}
-.receipt-discount-label {
-  color: #c0392b !important;
-  font-size: 12px;
-}
-.receipt-discount-value {
-  color: #c0392b !important;
-  font-weight: 700;
-  white-space: nowrap;
-}
+.receipt-discount-row { margin: 4px 0; }
+.receipt-discount-label { color: #c0392b !important; }
+.receipt-discount-value { color: #c0392b !important; font-weight: 700; white-space: nowrap; }
 
 /* ─── HARGA BAYAR ──────────────────────────── */
-.receipt-pay-row {
-  margin: 4px 0 0;
-}
-.receipt-pay-label {
-  color: #555 !important;
-  font-size: 12px;
-}
+.receipt-pay-row { margin: 4px 0 0; }
+.receipt-pay-label { color: #14171f !important; }
 
 /* ─── KOTAK REF ID / NICKNAME ──────────────── */
 .receipt-ref-box {
-  border: 1px dashed #999;
-  border-radius: 2px;
-  padding: 6px 10px;
-  font-size: 11px;
+  border: 1px dashed #cbd0d5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
   text-align: center;
-  color: #1a1a1a;
-  margin: 8px 0 4px;
+  color: #14171f;
+  margin: 10px 0 4px;
+  background: #f5f7f8;
 }
 
-/* ─── SUB TOTAL (dicoret) ──────────────────── */
-.receipt-subtotal-row {
-  color: #1a1a1a;
-}
+/* ─── SUB TOTAL (dicoret samar) ────────────── */
+.receipt-subtotal-row { color: #14171f; }
 .receipt-subtotal-strike {
   text-decoration: line-through;
-  color: #bbb !important;
+  color: #aaa !important;
+  font-weight: 400;
 }
-.receipt-total-discount-row {
-  margin: 2px 0;
-}
+.receipt-total-discount-row { margin: 4px 0; }
 
 /* ─── TOTAL AKHIR ──────────────────────────── */
-.receipt-total {
-  font-size: 15px;
-  font-weight: 700;
-  margin-top: 4px;
-}
-.receipt-total span { color: #1a1a1a; font-weight: 700; }
+.receipt-total { font-size: 22px; font-weight: 700; }
+.receipt-total span { color: #14171f; font-weight: 700; }
 
 /* ─── QR CODE ──────────────────────────────── */
-.receipt-qr {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
+.receipt-qr { display: flex; justify-content: center; margin-top: 20px; }
 
 /* ─── FOOTER ───────────────────────────────── */
-.receipt-footer {
-  text-align: center;
-  margin: 14px 0 0;
-  font-size: 11px;
-  color: #888;
-  line-height: 1.6;
-}
-
-/* ─── TEPI STRUK BERGELOMBANG (zigzag bawah) ─ */
-.receipt-paper::after {
-  content: '';
-  display: block;
-  height: 6px;
-  background: repeating-linear-gradient(90deg, #fff 0px, #fff 8px, #ccc 8px, #ccc 10px);
-  margin: 16px -20px -24px;
-}
+.receipt-footer { text-align: center; margin: 15px 0 0; font-size: 13px; color: #555; }
 
 /* ─── PROFIT / KEUNTUNGAN ─────────────────── */
-.is-profit {
-  color: var(--green);
-  font-weight: 700;
-}
+.is-profit { color: var(--green); font-weight: 700; }
 .profit-preview {
   display: flex;
   align-items: center;
@@ -1372,17 +1325,21 @@ textarea {
   font-size: 13px;
   font-weight: 700;
 }
-.profit-preview strong {
-  color: var(--green);
-  font-size: 16px;
-}
-.profit-preview strong.is-negative {
-  color: var(--red);
-}
-.receipt-center {
-  text-align: center;
-  font-size: 14px;
-  color: #14171f;
-}
+.profit-preview strong { color: var(--green); font-size: 16px; }
+.profit-preview strong.is-negative { color: var(--red); }
+.receipt-center { text-align: center; font-size: 14px; color: #14171f; }
 .receipt-center + .receipt-center { margin-top: 0; }
 .receipt-row + .receipt-center { margin-top: 15px; }
+.receipt-barcode-slot {
+  height: 46px;
+  margin: 15px 0;
+  border: 1px dashed #cbd0d5;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #8a919a;
+  background: #f5f7f8;
+}
