@@ -1702,3 +1702,6 @@ setInterval(checkAutoPromo, 10000); // every 10s
 // ─── INIT ─────────────────────────────────────
 saveGames(); // normalize on boot
 navigateTo("dashboard");
+
+// Ekspos fungsi readOrders ke global agar bisa dipanggil dari HTML
+window.readOrders = readOrders;
