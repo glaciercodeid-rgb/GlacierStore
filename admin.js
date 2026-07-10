@@ -193,7 +193,14 @@ function saveOrderSafely(order){
     guard++;
   }
   orders.push(order);
-  saveOrders();
+  saveOrders(); // simpan ke localStorage dulu (biar tampilan langsung update)
+  
+  // Kirim ke Supabase (async, jangan tunggu)
+  window.scPushOrder(order).catch(e => {
+    console.warn("Gagal push order ke Supabase:", e);
+    toast("Transaksi tersimpan lokal, tetapi gagal sinkron ke cloud. Cek koneksi.", "warn");
+  });
+  
   return order;
 }
 

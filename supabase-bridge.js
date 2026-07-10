@@ -270,4 +270,56 @@
   window.scPushCatalog = scPushCatalog;
   window.scPushSettings = scPushSettings;
   window.scPushSettingsSafe = scPushSettingsSafe;
+
+  // ─── PUSH ORDERS KE SUPABASE ──────────────────────────────
+async function scPushOrder(order) {
+  const sb = window.supabaseClient;
+  const { error } = await sb.from("sales").insert({
+    order_id: order.orderId,
+    date: order.date,
+    game_id: order.gameId,
+    game_name: order.gameName,
+    product_name: order.productName,
+    price_value: order.priceValue,
+    cost_value: order.costValue,
+    profit_value: order.profitValue,
+    buyer: order.buyer,
+    nick: order.nick,
+    ref: order.ref,
+    qr_text: order.qrText,
+  });
+  if (error) throw error;
+}
+
+// ─── PULL ORDERS DARI SUPABASE ─────────────────────────────
+async function scPullOrders() {
+  const sb = window.supabaseClient;
+  const { data, error } = await sb.from("sales").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  if (data && data.length) {
+    // Konversi ke format yang sama dengan orders di admin.js
+    const formatted = data.map(o => ({
+      orderId: o.order_id,
+      date: o.date,
+      gameId: o.game_id,
+      gameName: o.game_name,
+      productName: o.product_name,
+      priceValue: Number(o.price_value),
+      costValue: Number(o.cost_value),
+      profitValue: Number(o.profit_value),
+      buyer: o.buyer || "",
+      nick: o.nick || "",
+      ref: o.ref || "",
+      qrText: o.qr_text || "",
+      createdAt: o.created_at,
+    }));
+    localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
+    return true;
+  }
+  return false;
+}
+
+// Ekspos ke global agar bisa dipanggil dari admin.js
+window.scPushOrder = scPushOrder;
+window.scPullOrders = scPullOrders;
 })();

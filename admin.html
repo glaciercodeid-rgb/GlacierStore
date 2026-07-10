@@ -700,6 +700,10 @@
         }
         try {
           await window.scPullCatalog();
+          // Tambahkan ini: tarik data penjualan terbaru dari Supabase
+          await window.scPullOrders();
+          // Reload data orders di memori
+          orders = readOrders();
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
