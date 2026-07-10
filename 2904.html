@@ -16,6 +16,7 @@
   </head>
   <body>
 
+    <!-- Auth guard -->
     <div id="auth-checking-overlay" style="position:fixed;inset:0;z-index:999;background:#f5f7f8;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;color:#5f6672;">
       Memeriksa sesi login...
     </div>
@@ -27,12 +28,12 @@
         <span></span>
       </button>
       <a class="brand" href="index.html" aria-label="GlacierStore website" style="display:flex; align-items:center; gap:10px; text-decoration:none;">
-  <img src="/assets/logo-icon.png" alt="GlacierStore" style="height:36px; width:auto;" />
-  <div style="display:flex; flex-direction:column; line-height:1.2;">
-    <strong style="font-size:15px; font-weight:800; color:#14171f;">GlacierStore</strong>
-    <small style="font-size:12px; font-weight:600; color:#5f6672;">admin</small>
-  </div>
-</a>
+        <img src="/assets/logo-icon.png" alt="GlacierStore" style="height:36px; width:auto;" />
+        <div style="display:flex; flex-direction:column; line-height:1.2;">
+          <strong style="font-size:15px; font-weight:800; color:#14171f;">GlacierStore</strong>
+          <small style="font-size:12px; font-weight:600; color:#5f6672;">admin</small>
+        </div>
+      </a>
       <div class="topbar-line"></div>
       <span class="topbar-page-label" data-page-label>Dashboard</span>
       <button type="button" data-logout-btn style="margin-left:auto;padding:8px 14px;border:1px solid #d8dde2;border-radius:8px;background:#fff;font:inherit;font-size:13px;font-weight:700;color:#b13d3d;cursor:pointer;">
@@ -76,6 +77,7 @@
 
     <main class="admin-main">
 
+      <!-- Dashboard -->
       <section class="admin-page is-active" data-page="dashboard">
         <div class="page-head">
           <div>
@@ -87,9 +89,7 @@
             <button class="maintenance-button" type="button" data-open-bulk-modal>⚡ Bulk Maintenance</button>
           </div>
         </div>
-
         <div class="dashboard-stats" data-dashboard-stats></div>
-
         <div class="dashboard-two-col">
           <article class="dash-card">
             <h2>Status Operasional Sekarang</h2>
@@ -100,7 +100,6 @@
             <div class="maintenance-live" data-dash-maintenance></div>
           </article>
         </div>
-
         <article class="dash-card">
           <div class="dash-card-head">
             <h2>Game dengan Masalah</h2>
@@ -110,6 +109,7 @@
         </article>
       </section>
 
+      <!-- Games -->
       <section class="admin-page" data-page="games">
         <div class="page-head">
           <div>
@@ -121,7 +121,6 @@
             <button class="maintenance-button" type="button" data-open-bulk-modal>⚡ Bulk Maintenance</button>
           </div>
         </div>
-
         <div class="toolbar">
           <label class="search-box">
             <span>🔍</span>
@@ -135,10 +134,10 @@
             <option value="segera-hadir">Segera Hadir</option>
           </select>
         </div>
-
         <div class="game-grid-admin" data-game-grid></div>
       </section>
 
+      <!-- Products -->
       <section class="admin-page" data-page="products">
         <div class="page-head">
           <div>
@@ -149,9 +148,7 @@
             <button class="primary-button" type="button" data-open-product-modal>+ Tambah Produk</button>
           </div>
         </div>
-
         <div class="product-game-picker" data-product-game-picker></div>
-
         <div class="product-panel">
           <div class="product-head">
             <div>
@@ -170,28 +167,26 @@
               <button class="secondary-button" type="button" data-apply-adjust>Terapkan ke Semua</button>
             </div>
           </div>
-
           <div class="table-wrap">
             <table class="product-table">
               <thead>
-                <tr>
-                  <th></th>
-                  <th>Nama Varian</th>
-                  <th>Harga Modal (IDR)</th>
-                  <th>Harga Jual (IDR)</th>
-                  <th>Promo</th>
-                  <th>Harga Promo (IDR)</th>
-                  <th>Status Promo</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Order ID</th>
+                <th>Game</th>
+                <th>Nominal</th>
+                <th>Harga</th>
+                <th>Untung</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
               <tbody data-product-table></tbody>
             </table>
           </div>
         </div>
       </section>
 
+      <!-- SALES (Penjualan) - TANPA STATUS, TANPA TOMBOL EDIT/SELESAI/BATAL -->
       <section class="admin-page" data-page="sales">
         <div class="page-head">
           <div>
@@ -242,6 +237,7 @@
         </div>
       </section>
 
+      <!-- Capital -->
       <section class="admin-page" data-page="capital">
         <div class="page-head">
           <div>
@@ -249,9 +245,7 @@
             <p>Total modal yang dikeluarkan dari transaksi yang tercatat di halaman Penjualan.</p>
           </div>
         </div>
-
         <div class="dashboard-stats" data-capital-summary></div>
-
         <div class="dash-card">
           <div class="dash-card-head">
             <h2>Modal per Game</h2>
@@ -271,6 +265,7 @@
         </div>
       </section>
 
+      <!-- Draft -->
       <section class="admin-page" data-page="draft">
         <div class="page-head">
           <div>
@@ -284,6 +279,7 @@
         </div>
       </section>
 
+      <!-- Settings -->
       <section class="admin-page" data-page="settings">
         <div class="page-head">
           <div>
@@ -294,7 +290,6 @@
             <button class="primary-button" type="button" data-save-site-settings>💾 Simpan Pengaturan</button>
           </div>
         </div>
-
         <div class="settings-panel">
           <article class="settings-card">
             <h2>Jam Operasional Admin</h2>
@@ -366,6 +361,7 @@
 
     <div class="toast-container" data-toast-container></div>
 
+    <!-- Confirm Modal -->
     <div class="modal-overlay" data-confirm-overlay aria-hidden="true">
       <div class="modal-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
         <div class="modal-head">
@@ -381,6 +377,7 @@
       </div>
     </div>
 
+    <!-- Game Modal -->
     <div class="modal-overlay" data-game-modal aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="game-modal-title">
         <header class="modal-head">
@@ -423,6 +420,7 @@
       </section>
     </div>
 
+    <!-- Product Modal -->
     <div class="modal-overlay" data-product-modal aria-hidden="true">
       <section class="modal-card product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <header class="modal-head teal-head">
@@ -494,6 +492,7 @@
       </section>
     </div>
 
+    <!-- Maintenance Modal -->
     <div class="modal-overlay" data-maintenance-modal aria-hidden="true">
       <section class="modal-card maintenance-modal" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
         <header class="modal-head">
@@ -540,6 +539,7 @@
       </section>
     </div>
 
+    <!-- Bulk Modal -->
     <div class="modal-overlay" data-bulk-modal aria-hidden="true">
       <section class="modal-card bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
         <header class="modal-head">
@@ -572,6 +572,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+    <!-- Sale Modal -->
     <div class="modal-overlay" data-sale-modal aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title">
         <header class="modal-head">
@@ -630,6 +631,7 @@
       </section>
     </div>
 
+    <!-- Receipt Modal -->
     <div class="modal-overlay" data-receipt-modal aria-hidden="true">
       <section class="modal-card receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
         <header class="modal-head">
