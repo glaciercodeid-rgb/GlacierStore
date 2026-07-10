@@ -128,6 +128,16 @@ function formatDateTime(value) {
   });
 }
 
+// Fungsi baru: hanya menampilkan jam (HH:MM), tanpa hari/tanggal
+function formatTimeOnly(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 function isGlobalMaintenanceActive(now = new Date()) {
   const maintenance = settings.systemMaintenance || {};
   if (!maintenance.enabled) return false;
@@ -211,8 +221,9 @@ function renderSettingsText() {
   document.querySelector("[data-info-message]").textContent = String(banner.message || "")
     .replaceAll("{open}", hours.open || "08:00")
     .replaceAll("{close}", hours.close || "22:00")
-    .replaceAll("{maintenance_start}", settings.systemMaintenance?.start ? formatDateTime(settings.systemMaintenance.start) : "00:00")
-    .replaceAll("{maintenance_end}", settings.systemMaintenance?.end ? formatDateTime(settings.systemMaintenance.end) : "04:00");
+    // GANTI: pakai formatTimeOnly, bukan formatDateTime
+    .replaceAll("{maintenance_start}", settings.systemMaintenance?.start ? formatTimeOnly(settings.systemMaintenance.start) : "00:00")
+    .replaceAll("{maintenance_end}", settings.systemMaintenance?.end ? formatTimeOnly(settings.systemMaintenance.end) : "04:00");
 }
 
 function renderOperationalStatus() {
@@ -488,11 +499,18 @@ function openGate(title, message, untilDate, locked, options = {}) {
   document.querySelector("[data-gate-title]").textContent = title;
   document.querySelector("[data-gate-message]").textContent = message;
   document.querySelector("[data-gate-modal]").classList.toggle("is-locked-gate", locked);
-  // Default: tombol "Hubungi Admin" selalu tampil. Khusus popup maintenance,
-  // showMaintenanceGate() akan menyembunyikannya lagi kalau admin mematikan
-  // opsi "Tampilkan Tombol Hubungi Admin" di pengaturan.
+  
+  // Atur tombol Hubungi Admin berdasarkan maintenance.contactUrgent
   const urgentBtn = document.querySelector("[data-urgent-contact]");
-  if (urgentBtn) urgentBtn.hidden = false;
+  if (urgentBtn) {
+    const maintenance = settings.systemMaintenance || {};
+    if (maintenance.contactUrgent === false) {
+      urgentBtn.style.display = "none";
+    } else {
+      urgentBtn.style.display = "";
+    }
+  }
+
   gateModal.classList.add("is-open");
   gateModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
