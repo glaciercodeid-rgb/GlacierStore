@@ -512,8 +512,21 @@ function openGate(title, message, untilDate, locked, options = {}) {
   gateModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-locked");
 
-  // ⚠️ BARIS INI SAYA HAPUS (komentari) biar startTicker yang handle countdown
-  // updateGateCountdown(untilDate);
+  // ✅ PAKSA COUNTDOWN BERJALAN SETIAP DETIK
+  if (untilDate) {
+    // Hapus interval lama kalau ada
+    if (window.gateCountdownInterval) {
+      clearInterval(window.gateCountdownInterval);
+    }
+    // Jalankan update pertama
+    updateGateCountdown(untilDate);
+    // Set interval setiap 1 detik
+    window.gateCountdownInterval = setInterval(() => {
+      updateGateCountdown(untilDate);
+    }, 1000);
+  } else {
+    document.querySelector("[data-gate-countdown]").textContent = "--:--:--";
+  }
 }
 
 function updateGateCountdown(untilDate) {
@@ -526,6 +539,12 @@ function updateGateCountdown(untilDate) {
 }
 
 function closeGate() {
+  // Hapus interval saat popup ditutup
+  if (window.gateCountdownInterval) {
+    clearInterval(window.gateCountdownInterval);
+    window.gateCountdownInterval = null;
+  }
+  
   if (gateModal.classList.contains("is-locked-gate")) return;
   offlineGateDismissed = true;
   gateModal.classList.remove("is-open");
