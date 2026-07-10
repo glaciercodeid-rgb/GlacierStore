@@ -1307,7 +1307,7 @@ function renderSalesTable(){
         <div class="row-actions" style="display:flex; gap:6px; flex-wrap:wrap;">
           <button class="mini-button" data-view-receipt="${esc(o.orderId)}">Lihat Struk</button>
           
-          ${o.status !== 'selesai' && o.status !== 'batal' ? `
+          ${o.status === 'menunggu' ? `
             <button class="mini-button" data-edit-sale="${esc(o.orderId)}">Edit</button>
             <button class="mini-button" data-complete-sale="${esc(o.orderId)}">Selesaikan</button>
             <button class="delete-button" data-cancel-sale="${esc(o.orderId)}">Batal</button>
