@@ -287,6 +287,7 @@ async function scPushOrder(order) {
     nick: order.nick,
     ref: order.ref,
     qr_text: order.qrText,
+    status: order.status || "menunggu", // <-- TAMBAHKAN STATUS
   });
   if (error) throw error;
 }
@@ -312,6 +313,7 @@ async function scPullOrders() {
       ref: o.ref || "",
       qrText: o.qr_text || "",
       createdAt: o.created_at,
+      status: o.status || "menunggu", // <-- TAMBAHKAN STATUS
     }));
     localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
     return true;

@@ -224,6 +224,11 @@
           <select class="filter-select" data-sales-game-filter>
             <option value="all">Semua Game</option>
           </select>
+          <!-- TAMBAHKAN INPUT USER ID -->
+          <label>
+            Cari User ID
+            <input type="text" data-sales-userid-filter placeholder="Contoh: 123456789" inputmode="numeric" />
+          </label>
           <button class="ghost-button" type="button" data-sales-clear-filter>Reset Filter</button>
         </div>
 
@@ -237,8 +242,8 @@
                 <th>Nominal</th>
                 <th>Harga</th>
                 <th>Untung</th>
-                <th>Struk</th>
-                <th></th>
+                <th>Status</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody data-sales-table-body></tbody>

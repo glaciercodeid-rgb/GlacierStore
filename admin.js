@@ -134,6 +134,7 @@ let currentPage  = "dashboard";
 let salesDateFilter = "";
 let salesGameFilter  = "all";
 let salesOrderIdFilter = "";
+let salesUserIdFilter = ""; // <-- TAMBAHKAN
 
 function saveGames(){
   games = normalizeGames(games);
@@ -1272,6 +1273,7 @@ function getFilteredOrders(){
     .filter(o=> salesGameFilter==="all" || o.gameId===salesGameFilter)
     .filter(o=> !salesDateFilter || (o.date && o.date.slice(0,10)===salesDateFilter))
     .filter(o=> !salesOrderIdFilter || (o.orderId && o.orderId.includes(salesOrderIdFilter)))
+    .filter(o=> !salesUserIdFilter || (o.buyer && o.buyer.includes(salesUserIdFilter))) // <-- TAMBAHKAN FILTER USER ID
     .sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -1281,7 +1283,7 @@ function renderSalesTable(){
   const list = getFilteredOrders();
 
   if(list.length===0){
-    body.innerHTML = `<tr><td colspan="8" class="empty-state">Belum ada transaksi tercatat untuk filter ini.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="empty-state">Belum ada transaksi tercatat untuk filter ini.</td></tr>`;
     return;
   }
 
@@ -1293,8 +1295,28 @@ function renderSalesTable(){
       <td>${esc(o.productName)}</td>
       <td>${esc(formatIdr(o.priceValue))}</td>
       <td class="is-profit">${esc(formatIdr(o.profitValue))}</td>
-      <td><button class="ghost-button" type="button" data-view-receipt="${esc(o.orderId)}">Lihat Struk</button></td>
-      <td><button class="delete-button" type="button" data-delete-sale="${esc(o.orderId)}">Hapus</button></td>
+      
+      <!-- TAMBAHKAN KOLOM STATUS -->
+      <td>
+        <span class="status-badge-table ${o.status === 'selesai' ? 'status-active' : 'status-scheduled'}">
+          ${o.status || 'menunggu'}
+        </span>
+      </td>
+
+      <!-- TAMBAHKAN KOLOM AKSI -->
+      <td>
+        <div class="row-actions">
+          <button class="icon-action" data-view-receipt="${esc(o.orderId)}" title="Lihat Struk">🖨</button>
+          
+          ${o.status !== 'selesai' ? `
+            <button class="icon-action" data-edit-sale="${esc(o.orderId)}" title="Edit Nick/Ref">✏️</button>
+            <button class="icon-action" data-complete-sale="${esc(o.orderId)}" title="Selesaikan">✅</button>
+            <button class="icon-action danger" data-cancel-sale="${esc(o.orderId)}" title="Batalkan">❌</button>
+          ` : ''}
+          
+          <button class="icon-action danger" data-delete-sale="${esc(o.orderId)}" title="Hapus">🗑</button>
+        </div>
+      </td>
     </tr>
   `).join("");
 }
@@ -1472,6 +1494,7 @@ function saveSaleFromForm(){
     nick,
     ref,
     qrText,
+    status: "menunggu", // status default
   };
 
   saveOrderSafely(order);
@@ -1482,9 +1505,68 @@ function saveSaleFromForm(){
   openReceipt(order.orderId);
 }
 
+// ─── EVENT LISTENER UNTUK TABEL PENJUALAN ────────────────────
 document.querySelector("[data-sales-table-body]")?.addEventListener("click", async e=>{
   const viewBtn = e.target.closest("[data-view-receipt]");
   if(viewBtn){ openReceipt(viewBtn.dataset.viewReceipt); return; }
+
+  const editBtn = e.target.closest("[data-edit-sale]");
+  if(editBtn){
+    const orderId = editBtn.dataset.editSale;
+    const order = orders.find(o=>o.orderId===orderId);
+    if(!order){ toast("Order tidak ditemukan","error"); return; }
+    
+    const newNick = prompt("Masukkan Nickname player:", order.nick || "");
+    if(newNick === null) return;
+    const newRef = prompt("Masukkan Ref ID (opsional):", order.ref || "");
+    if(newRef === null) return;
+    
+    order.nick = newNick.trim();
+    order.ref = newRef.trim();
+    saveOrders();
+    
+    // Update ke Supabase (karena data nick/ref berubah)
+    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
+    
+    renderSalesPage();
+    if(currentPage==="capital") renderCapitalPage();
+    toast("Nickname & Ref ID berhasil diperbarui ✓");
+    return;
+  }
+
+  const completeBtn = e.target.closest("[data-complete-sale]");
+  if(completeBtn){
+    const orderId = completeBtn.dataset.completeSale;
+    const order = orders.find(o=>o.orderId===orderId);
+    if(!order){ toast("Order tidak ditemukan","error"); return; }
+    
+    const ok = await confirm("Selesaikan Transaksi", `Tandai transaksi #${orderId} sebagai SELESAI?`);
+    if(!ok) return;
+    
+    order.status = "selesai";
+    saveOrders();
+    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
+    renderSalesPage();
+    toast("Transaksi ditandai selesai ✓");
+    return;
+  }
+
+  const cancelBtn = e.target.closest("[data-cancel-sale]");
+  if(cancelBtn){
+    const orderId = cancelBtn.dataset.cancelSale;
+    const order = orders.find(o=>o.orderId===orderId);
+    if(!order){ toast("Order tidak ditemukan","error"); return; }
+    
+    const ok = await confirm("Batalkan Transaksi", `Batalkan transaksi #${orderId}?`);
+    if(!ok) return;
+    
+    order.status = "batal";
+    saveOrders();
+    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
+    renderSalesPage();
+    toast("Transaksi dibatalkan");
+    return;
+  }
 
   const delBtn = e.target.closest("[data-delete-sale]");
   if(delBtn){
@@ -1530,16 +1612,23 @@ document.querySelector("[data-sales-game-filter]")?.addEventListener("change", e
   salesGameFilter = e.target.value;
   renderSalesPage();
 });
+document.querySelector("[data-sales-userid-filter]")?.addEventListener("input", e=>{
+  salesUserIdFilter = e.target.value.trim();
+  renderSalesPage();
+});
 document.querySelector("[data-sales-clear-filter]")?.addEventListener("click", ()=>{
   salesDateFilter = "";
   salesGameFilter = "all";
   salesOrderIdFilter = "";
+  salesUserIdFilter = "";
   const orderIdInput = document.querySelector("[data-sales-orderid-filter]");
   const dateInput = document.querySelector("[data-sales-date-filter]");
   const gameSelect = document.querySelector("[data-sales-game-filter]");
+  const userIdInput = document.querySelector("[data-sales-userid-filter]");
   if(orderIdInput) orderIdInput.value = "";
   if(dateInput) dateInput.value = "";
   if(gameSelect) gameSelect.value = "all";
+  if(userIdInput) userIdInput.value = "";
   renderSalesPage();
 });
 
