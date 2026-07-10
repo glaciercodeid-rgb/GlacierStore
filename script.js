@@ -259,7 +259,9 @@ function renderOperationalStatus() {
     state.online &&
     lastOrderMinutes > 0 &&
     minutesUntilClose(hours, new Date()) <= lastOrderMinutes;
-  lastOrderNote.textContent = withinLastOrderWindow ? hours.lastOrderMessage || "" : "";
+  if (!lastOrderNote.classList.contains("uid-error-note")) {
+    lastOrderNote.textContent = withinLastOrderWindow ? hours.lastOrderMessage || "" : "";
+  }
 
   if (!state.online && hours.autoOffline && hours.showCountdown && !offlineGateDismissed) {
     if (!gateModal.classList.contains("is-open")) {
