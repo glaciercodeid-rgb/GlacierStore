@@ -1296,25 +1296,24 @@ function renderSalesTable(){
       <td>${esc(formatIdr(o.priceValue))}</td>
       <td class="is-profit">${esc(formatIdr(o.profitValue))}</td>
       
-      <!-- TAMBAHKAN KOLOM STATUS -->
       <td>
         <span class="status-badge-table ${o.status === 'selesai' ? 'status-active' : 'status-scheduled'}">
           ${o.status || 'menunggu'}
         </span>
       </td>
 
-      <!-- TAMBAHKAN KOLOM AKSI -->
+      <!-- TAMBAHKAN KOLOM AKSI (Teks, bukan ikon) -->
       <td>
-        <div class="row-actions">
-          <button class="icon-action" data-view-receipt="${esc(o.orderId)}" title="Lihat Struk">🖨</button>
+        <div class="row-actions" style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="mini-button" data-view-receipt="${esc(o.orderId)}">Lihat Struk</button>
           
-          ${o.status !== 'selesai' ? `
-            <button class="icon-action" data-edit-sale="${esc(o.orderId)}" title="Edit Nick/Ref">✏️</button>
-            <button class="icon-action" data-complete-sale="${esc(o.orderId)}" title="Selesaikan">✅</button>
-            <button class="icon-action danger" data-cancel-sale="${esc(o.orderId)}" title="Batalkan">❌</button>
+          ${o.status !== 'selesai' && o.status !== 'batal' ? `
+            <button class="mini-button" data-edit-sale="${esc(o.orderId)}">Edit</button>
+            <button class="mini-button" data-complete-sale="${esc(o.orderId)}">Selesaikan</button>
+            <button class="delete-button" data-cancel-sale="${esc(o.orderId)}">Batal</button>
           ` : ''}
           
-          <button class="icon-action danger" data-delete-sale="${esc(o.orderId)}" title="Hapus">🗑</button>
+          <button class="delete-button" data-delete-sale="${esc(o.orderId)}">Hapus</button>
         </div>
       </td>
     </tr>
@@ -1468,7 +1467,7 @@ function saveSaleFromForm(){
 
   const priceValue = Number(selectedOpt?.dataset.price || 0);
   const costValue  = Number(selectedOpt?.dataset.cost  || 0);
-  const profitValue= priceValue - costValue;
+  const profitValue= Math.max(0, priceValue - costValue); // <-- PERBAIKAN UNTUNG
 
   const buyer  = document.querySelector("[data-sale-buyer]").value.trim();
   const nick   = document.querySelector("[data-sale-nick]").value.trim();
@@ -1515,22 +1514,35 @@ document.querySelector("[data-sales-table-body]")?.addEventListener("click", asy
     const orderId = editBtn.dataset.editSale;
     const order = orders.find(o=>o.orderId===orderId);
     if(!order){ toast("Order tidak ditemukan","error"); return; }
-    
-    const newNick = prompt("Masukkan Nickname player:", order.nick || "");
-    if(newNick === null) return;
-    const newRef = prompt("Masukkan Ref ID (opsional):", order.ref || "");
-    if(newRef === null) return;
-    
-    order.nick = newNick.trim();
-    order.ref = newRef.trim();
-    saveOrders();
-    
-    // Update ke Supabase (karena data nick/ref berubah)
-    if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
-    
-    renderSalesPage();
-    if(currentPage==="capital") renderCapitalPage();
-    toast("Nickname & Ref ID berhasil diperbarui ✓");
+
+    // --- BUKA FORM CATAT PENJUALAN DENGAN DATA TERISI ---
+    const gameSelect = document.querySelector("[data-sale-game]");
+    const productSelect = document.querySelector("[data-sale-product]");
+    const dateInput = document.querySelector("[data-sale-date]");
+    const buyerInput = document.querySelector("[data-sale-buyer]");
+    const nickInput = document.querySelector("[data-sale-nick]");
+    const refInput = document.querySelector("[data-sale-ref]");
+
+    if(gameSelect){
+      gameSelect.value = order.gameId;
+      gameSelect.dispatchEvent(new Event("change"));
+    }
+
+    setTimeout(() => {
+      if(productSelect){
+        const options = [...productSelect.options];
+        const targetOption = options.find(opt => opt.text === order.productName);
+        if(targetOption) productSelect.value = targetOption.value;
+        productSelect.dispatchEvent(new Event("change"));
+      }
+    }, 100);
+
+    if(dateInput) dateInput.value = order.date;
+    if(buyerInput) buyerInput.value = order.buyer || "";
+    if(nickInput) nickInput.value = order.nick || "";
+    if(refInput) refInput.value = order.ref || "";
+
+    openModal(saleModal);
     return;
   }
 
@@ -1543,7 +1555,12 @@ document.querySelector("[data-sales-table-body]")?.addEventListener("click", asy
     const ok = await confirm("Selesaikan Transaksi", `Tandai transaksi #${orderId} sebagai SELESAI?`);
     if(!ok) return;
     
+    // ✅ SAAT ADMIN KLIK SELESAIKAN, WAKTU DICATAT DI SINI
+    const now = new Date();
     order.status = "selesai";
+    order.completedAt = now.toISOString(); // Simpan waktu selesai
+    order.createdAt = now.toISOString();   // (Opsional) overwrite createdAt jika mau pakai waktu selesai
+    
     saveOrders();
     if(window.scPushOrder) window.scPushOrder(order).catch(e=>console.warn(e));
     renderSalesPage();
