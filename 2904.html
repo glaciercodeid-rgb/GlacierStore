@@ -641,29 +641,68 @@
         </header>
         <div class="modal-body">
           <div class="receipt-paper" data-receipt-paper>
+
+            <!-- Header: logo + brand -->
             <div class="receipt-logo-slot" data-receipt-logo-slot></div>
             <div class="receipt-brand" data-receipt-brand>GlacierStore</div>
             <p class="receipt-sub">Pasti Murah Pasti Untung</p>
+
             <div class="receipt-divider"></div>
+
+            <!-- Order ID & tanggal -->
             <div class="receipt-row"><span>Order ID</span><span data-receipt-order-id>-</span></div>
             <div class="receipt-row"><span>Date/Time</span><span data-receipt-date>-</span></div>
+
             <div class="receipt-divider"></div>
+
+            <!-- Produk + harga normal (dicoret kalau promo) -->
             <div class="receipt-row receipt-product-row">
               <span data-receipt-product>-</span>
+              <span data-receipt-price-normal>Rp0</span>
+            </div>
+
+            <!-- Baris diskon — hanya muncul kalau ada promo -->
+            <div class="receipt-row receipt-discount-row" data-receipt-discount-wrap hidden>
+              <span class="receipt-discount-label">⮑ Diskon Promo</span>
+              <span class="receipt-discount-value" data-receipt-discount>-Rp0</span>
+            </div>
+
+            <!-- Harga bayar (harga akhir setelah diskon) -->
+            <div class="receipt-row receipt-pay-row" data-receipt-pay-wrap hidden>
+              <span class="receipt-pay-label">Harga Bayar</span>
               <span data-receipt-price>Rp0</span>
             </div>
-            <br />
-            <div class="receipt-row"><span>ID Tujuan</span><span data-receipt-buyer>-</span></div>
-            <div class="receipt-center" data-receipt-nick-wrap hidden>
-              <div data-receipt-nick></div>
+
+            <!-- ID Tujuan -->
+            <div class="receipt-row" style="margin-top:12px;"><span>ID Tujuan</span><span data-receipt-buyer>-</span></div>
+
+            <!-- Nickname & Ref ID (opsional, dalam kotak putus-putus) -->
+            <div class="receipt-ref-box" data-receipt-nick-wrap hidden>
+              <span data-receipt-nick></span>
+              <span data-receipt-ref hidden></span>
             </div>
             <div class="receipt-center" data-receipt-ref-wrap hidden>
               <div data-receipt-ref></div>
             </div>
+
             <div class="receipt-divider"></div>
-            <div class="receipt-row receipt-total"><span>Total</span><span data-receipt-total>Rp0</span></div>
+
+            <!-- Sub Total + Total Diskon + Total Bayar -->
+            <div class="receipt-row receipt-subtotal-row" data-receipt-subtotal-wrap hidden>
+              <span>Sub Total :</span>
+              <span class="receipt-subtotal-strike" data-receipt-subtotal>Rp0</span>
+            </div>
+            <div class="receipt-row receipt-total-discount-row" data-receipt-total-discount-wrap hidden>
+              <span class="receipt-discount-label">Total Diskon :</span>
+              <span class="receipt-discount-value" data-receipt-total-discount>-Rp0</span>
+            </div>
+            <div class="receipt-thin-line" data-receipt-discount-line hidden></div>
+            <div class="receipt-row receipt-total"><span>Total :</span><span data-receipt-total>Rp0</span></div>
+
+            <!-- QR Code -->
             <div class="receipt-qr" data-receipt-qr hidden></div>
-            <p class="receipt-footer">Terima kasih telah berbelanja di <span data-receipt-brand-footer>GlacierStore</span></p>
+
+            <p class="receipt-footer">Terima kasih telah berbelanja di <span data-receipt-brand-footer>GlacierStore</span><br><span data-receipt-contact></span></p>
           </div>
         </div>
         <footer class="modal-actions">

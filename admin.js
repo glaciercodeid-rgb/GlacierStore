@@ -1434,9 +1434,13 @@ function saveSaleFromForm(){
     return;
   }
 
-  const priceValue = Number(selectedOpt?.dataset.price || 0);
-  const costValue  = Number(selectedOpt?.dataset.cost  || 0);
-  const profitValue= Math.max(0, priceValue - costValue);
+  const priceValue   = Number(selectedOpt?.dataset.price        || 0);
+  const costValue    = Number(selectedOpt?.dataset.cost         || 0);
+  const profitValue  = Math.max(0, priceValue - costValue);
+  const promoActive  = selectedOpt?.dataset.promoActive === "1";
+  const sellingPrice = Number(selectedOpt?.dataset.sellingPrice || 0);
+  // normalValue = harga sebelum diskon (hanya ada kalau promo aktif)
+  const normalValue  = promoActive && sellingPrice > priceValue ? sellingPrice : 0;
 
   const buyer  = document.querySelector("[data-sale-buyer]").value.trim();
   const nick   = document.querySelector("[data-sale-nick]").value.trim();
@@ -1455,6 +1459,7 @@ function saveSaleFromForm(){
     gameName: game?.name || "-",
     productName,
     priceValue,
+    normalValue,
     costValue,
     profitValue,
     buyer,
@@ -1545,37 +1550,93 @@ function openReceipt(orderId){
   document.querySelector("[data-receipt-brand]").textContent = brand;
   document.querySelector("[data-receipt-brand-footer]").textContent = brand;
 
+  // Logo
   const logoSlot = document.querySelector("[data-receipt-logo-slot]");
   if(logoSlot){
     logoSlot.innerHTML = "";
     const img = document.createElement("img");
     img.src = "/assets/logo-icon.png";
     img.alt = brand;
-    img.style.cssText = "height:56px;width:auto;display:block;margin:0 auto 4px;";
     logoSlot.appendChild(img);
   }
+
+  // Order info
   document.querySelector("[data-receipt-order-id]").textContent = "#" + order.orderId;
   document.querySelector("[data-receipt-date]").textContent = new Date(order.createdAt).toLocaleString("id-ID");
   document.querySelector("[data-receipt-product]").textContent = `${order.gameName} - ${order.productName}`;
-  document.querySelector("[data-receipt-price]").textContent = formatIdr(order.priceValue);
   document.querySelector("[data-receipt-buyer]").textContent = order.buyer || "-";
-  document.querySelector("[data-receipt-total]").textContent = formatIdr(order.priceValue);
 
+  // Hitung diskon dari costPrice vs priceValue vs normalPrice
+  // order.normalValue = harga normal (sebelum diskon), order.priceValue = harga bayar
+  const priceValue  = Number(order.priceValue)  || 0;
+  const normalValue = Number(order.normalValue) || 0;
+  const hasDiscount = normalValue > 0 && normalValue > priceValue;
+  const discountValue = hasDiscount ? normalValue - priceValue : 0;
+
+  // Baris nama produk: harga normal dicoret kalau promo
+  const productRow = document.querySelector("[data-receipt-price-normal]");
+  if(productRow){
+    productRow.textContent = hasDiscount ? formatIdr(normalValue) : formatIdr(priceValue);
+  }
+  const productRowEl = document.querySelector(".receipt-product-row");
+  if(productRowEl){
+    productRowEl.classList.toggle("no-promo", !hasDiscount);
+  }
+
+  // Baris diskon merah
+  const discountWrap = document.querySelector("[data-receipt-discount-wrap]");
+  const discountEl   = document.querySelector("[data-receipt-discount]");
+  discountWrap.hidden = !hasDiscount;
+  if(hasDiscount && discountEl) discountEl.textContent = "-" + formatIdr(discountValue);
+
+  // Baris harga bayar
+  const payWrap = document.querySelector("[data-receipt-pay-wrap]");
+  payWrap.hidden = !hasDiscount;
+  document.querySelector("[data-receipt-price]").textContent = formatIdr(priceValue);
+
+  // Sub total + total diskon + garis tipis (hanya kalau promo)
+  const subtotalWrap = document.querySelector("[data-receipt-subtotal-wrap]");
+  const subtotalEl   = document.querySelector("[data-receipt-subtotal]");
+  const totalDiscWrap = document.querySelector("[data-receipt-total-discount-wrap]");
+  const totalDiscEl   = document.querySelector("[data-receipt-total-discount]");
+  const discLine      = document.querySelector("[data-receipt-discount-line]");
+  subtotalWrap.hidden  = !hasDiscount;
+  totalDiscWrap.hidden = !hasDiscount;
+  if(discLine) discLine.hidden = !hasDiscount;
+  if(hasDiscount){
+    if(subtotalEl) subtotalEl.textContent = formatIdr(normalValue);
+    if(totalDiscEl) totalDiscEl.textContent = "-" + formatIdr(discountValue);
+  }
+
+  // Total akhir
+  document.querySelector("[data-receipt-total]").textContent = formatIdr(priceValue);
+
+  // Nickname & Ref ID dalam satu kotak putus-putus
   const nickWrap = document.querySelector("[data-receipt-nick-wrap]");
   const nickEl   = document.querySelector("[data-receipt-nick]");
-  if(order.nick){ nickEl.textContent = order.nick; nickWrap.hidden = false; }
-  else{ nickWrap.hidden = true; }
+  const refEl    = document.querySelector("[data-receipt-ref]");
+  const hasNick  = Boolean(order.nick);
+  const hasRef   = Boolean(order.ref);
+  nickWrap.hidden = !(hasNick || hasRef);
+  if(nickEl) nickEl.textContent = hasNick ? order.nick : "";
+  if(refEl){
+    refEl.hidden = !hasRef;
+    refEl.textContent = hasRef ? "RefId: " + order.ref : "";
+  }
 
-  const refWrap = document.querySelector("[data-receipt-ref-wrap]");
-  const refEl   = document.querySelector("[data-receipt-ref]");
-  if(order.ref){ refEl.textContent = "RefID: " + order.ref; refWrap.hidden = false; }
-  else{ refWrap.hidden = true; }
+  // Kontak di footer
+  const contactEl = document.querySelector("[data-receipt-contact]");
+  if(contactEl){
+    const wa = siteSettings.whatsappNumber || "";
+    contactEl.textContent = wa ? "Kritik & Saran : " + wa : "";
+  }
 
+  // QR Code
   const qrBox = document.querySelector("[data-receipt-qr]");
   qrBox.innerHTML = "";
   if(order.qrText && window.QRCode){
     qrBox.hidden = false;
-    new window.QRCode(qrBox, { text: order.qrText, width: 120, height: 120, correctLevel: window.QRCode.CorrectLevel.H });
+    new window.QRCode(qrBox, { text: order.qrText, width: 100, height: 100, correctLevel: window.QRCode.CorrectLevel.H });
   } else {
     qrBox.hidden = true;
   }
