@@ -1515,6 +1515,16 @@ function openReceipt(orderId){
   const brand = siteSettings.brandName || "GlacierStore";
   document.querySelector("[data-receipt-brand]").textContent = brand;
   document.querySelector("[data-receipt-brand-footer]").textContent = brand;
+
+  const logoSlot = document.querySelector("[data-receipt-logo-slot]");
+  if(logoSlot){
+    logoSlot.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = "logo-icon.png";
+    img.alt = brand;
+    img.style.cssText = "height:56px;width:auto;display:block;margin:0 auto 4px;";
+    logoSlot.appendChild(img);
+  }
   document.querySelector("[data-receipt-order-id]").textContent = "#" + order.orderId;
   document.querySelector("[data-receipt-date]").textContent = new Date(order.createdAt).toLocaleString("id-ID");
   document.querySelector("[data-receipt-product]").textContent = `${order.gameName} - ${order.productName}`;
