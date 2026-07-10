@@ -476,6 +476,14 @@ function showUserIdError() {
   input.classList.add("uid-shake");
   input.addEventListener("animationend", () => input.classList.remove("uid-shake"), { once: true });
 
+  // hilang otomatis setelah 5 detik
+  setTimeout(() => {
+    input.classList.remove("uid-input-error");
+    if (note && note.textContent.startsWith("⚠")) note.textContent = "";
+    note?.classList.remove("uid-error-note");
+    input.removeEventListener("input", clearError);
+  }, 5000);
+
   // hilangkan error saat user mulai ngetik
   const clearError = () => {
     input.classList.remove("uid-input-error");
