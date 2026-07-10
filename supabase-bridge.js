@@ -322,4 +322,13 @@ async function scPullOrders() {
 // Ekspos ke global agar bisa dipanggil dari admin.js
 window.scPushOrder = scPushOrder;
 window.scPullOrders = scPullOrders;
+
+// ─── HAPUS ORDER DARI SUPABASE ──────────────────────────────
+async function scDeleteOrder(orderId) {
+  const sb = window.supabaseClient;
+  const { error } = await sb.from("sales").delete().eq("order_id", orderId);
+  if (error) throw error;
+}
+window.scDeleteOrder = scDeleteOrder;
+
 })();

@@ -340,6 +340,7 @@ function closeModals(){
     m?.setAttribute("aria-hidden","true");
   });
   clearFormErrors();
+  document.activeElement?.blur(); // <-- tambahkan ini untuk hilangkan warning aria-hidden
 }
 
 document.querySelectorAll("[data-close-modal]").forEach(btn=>{
@@ -1224,12 +1225,14 @@ function ordersThisYear(){
 
 // ─── halaman Penjualan: ringkasan berbasis KEUNTUNGAN ──
 function renderSalesSummary(){
-  // ✅ PERBAIKAN: pakai orders asli, bukan hasil filter
-  const list = orders; 
-  
-  const now  = new Date();
+  // ✅ PERBAIKAN: Pakai tanggal dari filter jika ada, atau hari ini jika kosong
+  const filterDate = salesDateFilter || new Date().toISOString().slice(0,10);
+  const now = new Date(filterDate);
 
-  const todayList = list.filter(o=> isSameLocalDay(o.date, now));
+  // Pakai orders asli (jangan difilter)
+  const list = orders; 
+
+  const todayList = list.filter(o => isSameLocalDay(o.date, now));
   const monthList = list.filter(o=>{
     const d = new Date(o.date);
     return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
@@ -1485,13 +1488,33 @@ document.querySelector("[data-sales-table-body]")?.addEventListener("click", asy
 
   const delBtn = e.target.closest("[data-delete-sale]");
   if(delBtn){
-    const ok = await confirm("Hapus Transaksi","Transaksi ini akan dihapus permanen. Lanjutkan?");
+    const orderId = delBtn.dataset.deleteSale;
+    const order = orders.find(o=>o.orderId===orderId);
+    if(!order){ toast("Transaksi tidak ditemukan.","error"); return; }
+    
+    const ok = await confirm("Hapus Transaksi", `Hapus transaksi #${orderId}? Data akan dihapus dari localStorage dan Supabase.`);
     if(!ok) return;
-    orders = orders.filter(o=>o.orderId!==delBtn.dataset.deleteSale);
+
+    // 1. Hapus dari localStorage
+    orders = orders.filter(o=>o.orderId!==orderId);
     saveOrders();
+    
+    // 2. Hapus dari Supabase (async, jangan tunggu)
+    try {
+      if (typeof window.scDeleteOrder === "function") {
+        await window.scDeleteOrder(orderId);
+        console.log(`Order ${orderId} berhasil dihapus dari Supabase`);
+      } else {
+        console.warn("scDeleteOrder belum ada, data hanya dihapus dari localStorage");
+      }
+    } catch (e) {
+      console.warn("Gagal hapus dari Supabase:", e);
+      toast("Data dihapus dari lokal, tetapi gagal dihapus dari cloud. Cek koneksi.", "warn");
+    }
+
     renderSalesPage();
     if(currentPage==="capital") renderCapitalPage();
-    toast("Transaksi dihapus","warn");
+    toast("Transaksi berhasil dihapus ✓");
   }
 });
 
@@ -1501,7 +1524,7 @@ document.querySelector("[data-sales-orderid-filter]")?.addEventListener("input",
 });
 document.querySelector("[data-sales-date-filter]")?.addEventListener("change", e=>{
   salesDateFilter = e.target.value;
-  renderSalesPage();
+  renderSalesPage(); // <-- tambahkan ini agar statistik ikut update saat filter berubah
 });
 document.querySelector("[data-sales-game-filter]")?.addEventListener("change", e=>{
   salesGameFilter = e.target.value;

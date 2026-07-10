@@ -783,6 +783,23 @@
       window.supabaseClient.auth.onAuthStateChange((event) => {
         if (event === "SIGNED_OUT") window.location.replace("login.html");
       });
+
+      // ─── TAMBAHKAN SESSION TIMEOUT DI SINI ──────────────────────
+      let idleTimer = null;
+      function resetIdleTimer() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(async () => {
+          toast("Anda tidak aktif selama 30 menit. Logout otomatis...", "warn");
+          await window.supabaseClient.auth.signOut();
+          window.location.replace("login.html");
+        }, 30 * 60 * 1000); // 30 menit
+      }
+
+      // Reset timer setiap kali ada interaksi user
+      document.addEventListener("mousemove", resetIdleTimer);
+      document.addEventListener("keydown", resetIdleTimer);
+      document.addEventListener("click", resetIdleTimer);
+      resetIdleTimer(); // jalankan pertama kali
     </script>
   </body>
 </html>
