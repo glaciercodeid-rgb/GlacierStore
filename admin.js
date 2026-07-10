@@ -1562,7 +1562,10 @@ function openReceipt(orderId){
 
   // Order info
   document.querySelector("[data-receipt-order-id]").textContent = "#" + order.orderId;
-  document.querySelector("[data-receipt-date]").textContent = new Date(order.createdAt).toLocaleString("id-ID");
+  const d = new Date(order.createdAt);
+  const pad = n => String(n).padStart(2,"0");
+  const dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  document.querySelector("[data-receipt-date]").textContent = dateStr;
   document.querySelector("[data-receipt-product]").textContent = `${order.gameName} - ${order.productName}`;
   document.querySelector("[data-receipt-buyer]").textContent = order.buyer || "-";
 
@@ -1573,10 +1576,11 @@ function openReceipt(orderId){
   const hasDiscount = normalValue > 0 && normalValue > priceValue;
   const discountValue = hasDiscount ? normalValue - priceValue : 0;
 
-  // Baris nama produk: harga normal dicoret kalau promo
-  const productRow = document.querySelector("[data-receipt-price-normal]");
-  if(productRow){
-    productRow.textContent = hasDiscount ? formatIdr(normalValue) : formatIdr(priceValue);
+  // Baris nama produk: harga normal dicoret kalau promo, samar kalau ada diskon
+  const priceNormalEl = document.querySelector("[data-receipt-price-normal]");
+  if(priceNormalEl){
+    priceNormalEl.textContent = hasDiscount ? formatIdr(normalValue) : formatIdr(priceValue);
+    priceNormalEl.classList.toggle("receipt-price-strike", hasDiscount);
   }
   const productRowEl = document.querySelector(".receipt-product-row");
   if(productRowEl){
@@ -1622,13 +1626,6 @@ function openReceipt(orderId){
   if(refEl){
     refEl.hidden = !hasRef;
     refEl.textContent = hasRef ? "RefId: " + order.ref : "";
-  }
-
-  // Kontak di footer
-  const contactEl = document.querySelector("[data-receipt-contact]");
-  if(contactEl){
-    const wa = siteSettings.whatsappNumber || "";
-    contactEl.textContent = wa ? "Kritik & Saran : " + wa : "";
   }
 
   // QR Code
