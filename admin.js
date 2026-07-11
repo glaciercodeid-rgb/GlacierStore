@@ -229,6 +229,7 @@ const maintenanceModal = document.querySelector("[data-maintenance-modal]");
 const bulkModal     = document.querySelector("[data-bulk-modal]");
 const saleModal      = document.querySelector("[data-sale-modal]");
 const receiptModal   = document.querySelector("[data-receipt-modal]");
+const supplierModal  = document.querySelector("[data-supplier-modal]");
 const gameForm      = document.querySelector("[data-game-form]");
 const productForm   = document.querySelector("[data-product-form]");
 const profitLine    = document.querySelector("[data-profit-line]");
@@ -338,7 +339,7 @@ function openModal(modal){
 }
 
 function closeModals(){
-  [gameModal, productModal, maintenanceModal, bulkModal, saleModal, receiptModal].forEach(m=>{
+  [gameModal, productModal, maintenanceModal, bulkModal, saleModal, receiptModal, supplierModal].forEach(m=>{
     m?.classList.remove("is-open");
     m?.setAttribute("aria-hidden","true");
   });
@@ -1819,7 +1820,6 @@ window.readOrders = readOrders;
 //  SUPPLIER — CRUD
 // ─────────────────────────────────────────────
 let editingSupplierId = null;
-const supplierModal = document.querySelector("[data-supplier-modal]");
 
 function countProductsForSupplier(supplierId){
   let count = 0;
