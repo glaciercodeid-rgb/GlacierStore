@@ -835,6 +835,34 @@
 
         document.getElementById("auth-checking-overlay").remove();
 
+        // ── Realtime sync: kalau ada perubahan di Supabase, reload data & re-render ──
+        window.scStartRealtime(function onSync(table) {
+          // Reload semua variable dari localStorage (yang sudah diupdate scPullAll)
+          if (typeof readGames    === "function") games        = normalizeGames(readGames());
+          if (typeof readOrders   === "function") orders       = readOrders();
+          if (typeof readSuppliers=== "function") suppliers    = readSuppliers();
+          if (typeof readSettings === "function") siteSettings = readSettings();
+
+          // Re-render halaman yang sedang aktif
+          const page = typeof currentPage !== "undefined" ? currentPage : "";
+          if (page === "dashboard")  { if(typeof renderDashboard  ==="function") renderDashboard(); }
+          if (page === "games")      { if(typeof renderGameCards   ==="function") renderGameCards(); }
+          if (page === "products")   { if(typeof renderProductPage ==="function") renderProductPage(); }
+          if (page === "sales")      { if(typeof renderSalesPage   ==="function") renderSalesPage(); }
+          if (page === "capital")    { if(typeof renderCapitalPage ==="function") renderCapitalPage(); }
+          if (page === "suppliers")  { if(typeof renderSupplierPage==="function") renderSupplierPage(); }
+          if (page === "settings")   { if(typeof renderSettingsForm==="function") renderSettingsForm(); }
+          if (page === "draft")      { if(typeof renderDraftPage   ==="function") renderDraftPage(); }
+
+          // Update draft badge & dashboard stats selalu
+          if (typeof updateDraftBadge  === "function") updateDraftBadge();
+          if (typeof renderDashboard   === "function" && page !== "dashboard") {
+            // update stats di background tanpa switch halaman
+          }
+
+          console.log("Realtime: halaman", page, "di-refresh karena perubahan di tabel", table);
+        });
+
         document.querySelector('[data-nav="draft"]')?.addEventListener("click", () => {
           const label = document.querySelector("[data-page-label]");
           if (label) label.textContent = "Draft Perubahan";
@@ -843,6 +871,7 @@
       })();
 
       document.querySelector("[data-logout-btn]").addEventListener("click", async () => {
+        if (window.scStopRealtime) window.scStopRealtime();
         await window.supabaseClient.auth.signOut();
         window.location.replace("login.html");
       });

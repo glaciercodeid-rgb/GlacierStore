@@ -311,6 +311,62 @@
   window.scPullSuppliers = scPullSuppliers;
   window.scPushSuppliers = scPushSuppliers;
 
+  // ─── REALTIME SYNC ───────────────────────────────────────────
+  // Subscribe ke perubahan tabel games, products, sales, suppliers, settings.
+  // Setiap ada perubahan → pull ulang data terkait → update localStorage
+  // → panggil callback onSync(table) agar admin.js bisa re-render.
+  let realtimeChannel = null;
+
+  async function scPullAll() {
+    await scPullCatalog().catch(e => console.warn("Realtime: gagal pull catalog:", e));
+    await scPullOrders().catch(e => console.warn("Realtime: gagal pull orders:", e));
+    await scPullSuppliers().catch(e => console.warn("Realtime: gagal pull suppliers:", e));
+  }
+
+  function scStartRealtime(onSync) {
+    const sb = window.supabaseClient;
+
+    // Debounce: tunda 600ms agar burst changes hanya trigger 1x pull
+    let debounceTimer = null;
+    function scheduleSync(table) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        console.log("Realtime: perubahan terdeteksi di", table, "— pull ulang...");
+        await scPullAll();
+        if (typeof onSync === "function") onSync(table);
+      }, 600);
+    }
+
+    realtimeChannel = sb
+      .channel("glacierstore-admin-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "games" },
+        () => scheduleSync("games"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" },
+        () => scheduleSync("products"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sales" },
+        () => scheduleSync("sales"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "suppliers" },
+        () => scheduleSync("suppliers"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" },
+        () => scheduleSync("settings"))
+      .subscribe((status) => {
+        console.log("Realtime status:", status);
+      });
+
+    return realtimeChannel;
+  }
+
+  function scStopRealtime() {
+    if (realtimeChannel) {
+      window.supabaseClient.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+  }
+
+  window.scStartRealtime = scStartRealtime;
+  window.scStopRealtime  = scStopRealtime;
+  window.scPullAll       = scPullAll;
+
   async function scDeleteOrder(orderId) {
     const sb = window.supabaseClient;
     const { error } = await sb.from("sales").delete().eq("order_id", orderId);
