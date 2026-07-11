@@ -100,6 +100,7 @@ function normalizeProduct(p, index = 0){
     status:             p.status || "normal",
     _promoAutoSoldout:  Boolean(p._promoAutoSoldout),
     sortOrder:          index,
+    supplierId:         p.supplierId || "",
   };
 }
 
