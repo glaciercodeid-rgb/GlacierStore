@@ -789,7 +789,13 @@
         try {
           await window.scPullCatalog();
           await window.scPullOrders();
-          if (window.scPullSuppliers) await window.scPullSuppliers().catch(()=>{});
+          if (window.scPullSuppliers) {
+            try {
+              await window.scPullSuppliers();
+            } catch(e) {
+              console.warn("Gagal pull suppliers dari Supabase:", e);
+            }
+          }
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
@@ -801,6 +807,11 @@
           script.onerror = reject;
           document.body.appendChild(script);
         });
+
+        // Reload suppliers dari localStorage (sudah diisi oleh scPullSuppliers di atas)
+        if (typeof suppliers !== "undefined" && typeof readSuppliers === "function") {
+          suppliers = readSuppliers();
+        }
 
         const _saveGames = saveGames;
         saveGames = function () {
