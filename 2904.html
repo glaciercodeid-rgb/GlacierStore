@@ -56,6 +56,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         <span>Manajemen Produk</span>
       </button>
+      <button class="rail-button" type="button" data-nav="suppliers" title="Supplier">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Supplier</span>
+      </button>
       <button class="rail-button" type="button" data-nav="sales" title="Penjualan">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span>Penjualan</span>
@@ -172,6 +176,7 @@
                 <tr>
                   <th></th>
                   <th>Nama Produk</th>
+                  <th>Supplier</th>
                   <th>Harga Modal</th>
                   <th>Harga Jual</th>
                   <th>Promo</th>
@@ -228,12 +233,39 @@
                 <th>Order ID</th>
                 <th>Game</th>
                 <th>Nominal</th>
+                <th>Supplier</th>
                 <th>Harga</th>
                 <th>Untung</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody data-sales-table-body></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Supplier -->
+      <section class="admin-page" data-page="suppliers">
+        <div class="page-head">
+          <div>
+            <h1>Manajemen Supplier</h1>
+            <p>Daftar supplier untuk referensi internal. Tidak tampil di struk pelanggan.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-open-supplier-modal>+ Tambah Supplier</button>
+          </div>
+        </div>
+        <div class="dash-card">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama Supplier</th>
+                <th>Jumlah Produk</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody data-supplier-table-body></tbody>
           </table>
         </div>
       </section>
@@ -447,6 +479,12 @@
               </select>
             </label>
             <label>
+              Supplier
+              <select name="supplierId" data-product-supplier-select>
+                <option value="">— Tidak ada —</option>
+              </select>
+            </label>
+            <label>
               Harga Modal (IDR)
               <input type="text" name="costPrice" placeholder="Rp0" />
             </label>
@@ -574,6 +612,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- Sale Modal -->
+    <!-- Supplier Modal -->
+    <div class="modal-overlay" data-supplier-modal aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
+        <header class="modal-head">
+          <h2 id="supplier-modal-title">Tambah Supplier</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body">
+          <label>
+            Nama Supplier <span class="required">*</span>
+            <input type="text" data-supplier-name placeholder="Contoh: Supplier A" />
+            <small class="field-error" data-error="supplier-name"></small>
+          </label>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-save-supplier>Simpan</button>
+        </footer>
+      </section>
+    </div>
+
     <div class="modal-overlay" data-sale-modal aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title">
         <header class="modal-head">
@@ -608,6 +667,10 @@
             <strong data-sale-profit-preview>Rp0</strong>
           </div>
           <small class="field-error" data-error="sale-price"></small>
+          <label>
+            Supplier <span style="font-weight:400;color:#5f6672;font-size:12px">(dari data produk, tidak tampil di struk)</span>
+            <input type="text" data-sale-supplier readonly style="background:#f5f7f8;color:#5f6672;" placeholder="— Otomatis dari produk —" />
+          </label>
           <label>
             ID Tujuan / User ID
             <input type="text" data-sale-buyer placeholder="Contoh: 123456789" />
@@ -726,6 +789,7 @@
         try {
           await window.scPullCatalog();
           await window.scPullOrders();
+          if (window.scPullSuppliers) await window.scPullSuppliers().catch(()=>{});
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }

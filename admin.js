@@ -122,6 +122,7 @@ function normalizeGames(source){
 let games        = normalizeGames(readGames());
 let siteSettings = readSettings();
 let orders       = readOrders();
+let suppliers    = readSuppliers();
 let activeGameId = games[0]?.id || "";
 let editingGameId       = null;
 let editingProductIndex = null;
@@ -151,6 +152,31 @@ function readOrders(){
 
 function saveOrders(){
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+}
+
+// ─── SUPPLIERS ───────────────────────────────
+const SUPPLIERS_KEY = "glaciercode_suppliers_v1";
+
+function readSuppliers(){
+  try{
+    const s = localStorage.getItem(SUPPLIERS_KEY);
+    const p = s ? JSON.parse(s) : [];
+    return Array.isArray(p) ? p : [];
+  }catch{ return []; }
+}
+
+function saveSuppliers(){
+  localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
+  // push ke Supabase
+  if(window.scPushSuppliers) window.scPushSuppliers(suppliers).catch(e=>console.warn("Gagal sync supplier:",e));
+}
+
+function supplierById(id){
+  return suppliers.find(s=>s.id===id) || null;
+}
+
+function supplierNameById(id){
+  return supplierById(id)?.name || "";
 }
 
 function orderIdExists(id){
@@ -251,6 +277,7 @@ const PAGE_LABELS = {
   dashboard: "Dashboard",
   games:     "Katalog Game",
   products:  "Manajemen Produk",
+  suppliers: "Supplier",
   sales:     "Penjualan",
   capital:   "Modal",
   settings:  "Pengaturan",
@@ -271,6 +298,7 @@ function navigateTo(page){
   if(page==="sales")     renderSalesPage();
   if(page==="capital")   renderCapitalPage();
   if(page==="settings")  renderSettingsForm();
+  if(page==="suppliers") renderSupplierPage();
   closeRailDrawer();
 }
 
@@ -779,14 +807,14 @@ function getPromoStatus(p){
 
 function renderProductTable(){
   const g = activeGame();
-  if(!g){ productTable.innerHTML=`<tr><td colspan="9">Pilih game terlebih dahulu.</td></tr>`; return; }
+  if(!g){ productTable.innerHTML=`<tr><td colspan="10">Pilih game terlebih dahulu.</td></tr>`; return; }
 
   selectedGameNameEl.textContent = g.name;
   productGameNameEl.textContent  = g.name;
   productSummaryEl.textContent   = `${g.products.length} varian. Status: ${g.status!=="normal"?`⚠ ${gameStatusLabel(g.status)}`:"✅ Aktif"}`;
 
   if(!g.products.length){
-    productTable.innerHTML=`<tr><td colspan="9" style="color:#5f6672;padding:20px;text-align:center">Belum ada produk. Klik "+ Tambah Produk" untuk mulai.</td></tr>`;
+    productTable.innerHTML=`<tr><td colspan="10" style="color:#5f6672;padding:20px;text-align:center">Belum ada produk. Klik "+ Tambah Produk" untuk mulai.</td></tr>`;
     return;
   }
 
@@ -801,10 +829,12 @@ function renderProductTable(){
     const statusBadge = unavail
       ? `<span class="status-badge-table ${p.status==="soldout"?"status-expired":"status-scheduled"}">${p.status==="soldout"?"Stok Habis":"Gangguan"}</span>`
       : `<span class="status-badge-table status-active">Normal</span>`;
+    const supplierName = supplierNameById(p.supplierId);
     return `
       <tr class="${unavail?"is-unavailable":""}" data-product-index="${i}" draggable="true" data-drag-product-index="${i}">
         <td class="drag-cell"><span class="drag-handle" title="Geser untuk urutkan">⠿</span></td>
         <td><strong>${esc(p.name)}</strong></td>
+        <td>${supplierName ? `<span class="supplier-chip">${esc(supplierName)}</span>` : `<span class="muted-cell">—</span>`}</td>
         <td><input type="text" value="${esc(p.costPrice)}" data-inline-field="costPrice" /></td>
         <td><input type="text" value="${esc(selVal)}" data-inline-field="sellingPrice" /></td>
         <td><input type="checkbox" ${p.promo||promoVal?"checked":""} data-inline-field="promo" /></td>
@@ -906,6 +936,16 @@ function updateInlineProduct(row){
   saveGames();
 }
 
+function populateSupplierDropdowns(){
+  // Isi semua dropdown supplier (di product modal)
+  document.querySelectorAll("[data-product-supplier-select]").forEach(sel=>{
+    const current = sel.value;
+    sel.innerHTML = `<option value="">— Tidak ada —</option>` +
+      suppliers.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+    if(current) sel.value = current;
+  });
+}
+
 function openProductEditor(index=null){
   const g = activeGame();
   if(!g){ toast("Pilih game terlebih dahulu.","error"); return; }
@@ -922,6 +962,8 @@ function openProductEditor(index=null){
   productForm.promoStart.value  = toDatetimeInput(p?.promoStart);
   productForm.promoEnd.value    = toDatetimeInput(p?.promoEnd);
   productForm.status.value      = p?.status || "normal";
+  populateSupplierDropdowns();
+  if(productForm.supplierId) productForm.supplierId.value = p?.supplierId || "";
   document.querySelector("#product-modal-title").textContent = index===null ? "Tambah Produk Baru" : "Edit Produk";
   updateProfitLine();
   openModal(productModal);
@@ -936,6 +978,7 @@ function saveProductFromForm(){
   const data = {
     name:        String(fd.get("name")||"").trim(),
     category:    String(fd.get("category")||"Diamonds"),
+    supplierId:  String(fd.get("supplierId")||"").trim(),
     costPrice:   String(fd.get("costPrice")||"").trim(),
     sellingPrice,
     promoPrice,
@@ -1229,6 +1272,7 @@ function renderSalesTable(){
       <td>${esc(o.orderId)}</td>
       <td>${esc(o.gameName)}</td>
       <td>${esc(o.productName)}</td>
+      <td>${o.supplierName ? `<span class="supplier-chip">${esc(o.supplierName)}</span>` : `<span class="muted-cell">—</span>`}</td>
       <td>${esc(formatIdr(o.priceValue))}</td>
       <td class="is-profit">${esc(formatIdr(o.profitValue))}</td>
       <td>
@@ -1354,7 +1398,8 @@ function populateSaleProductOptions(){
             data-cost="${esc(parseMoney(p.costPrice))}"
             data-promo-active="${promoActive ? '1' : '0'}"
             data-promo-price="${esc(parseMoney(p.promoPrice||'0'))}"
-            data-selling-price="${esc(parseMoney(p.sellingPrice||p.price||'0'))}">
+            data-selling-price="${esc(parseMoney(p.sellingPrice||p.price||'0'))}"
+            data-supplier="${esc(supplierNameById(p.supplierId))}">
       ${esc(p.name)}${promoActive ? ' 🏷️' : ''}
     </option>
   `;
@@ -1378,6 +1423,8 @@ function applySaleProductPrice(){
   const promoActive = opt?.dataset.promoActive === "1";
   document.querySelector("[data-sale-price]").value = formatIdr(price);
   document.querySelector("[data-sale-cost]").value  = formatIdr(cost);
+  const supplierField = document.querySelector("[data-sale-supplier]");
+  if(supplierField) supplierField.value = opt?.dataset.supplier || "";
 
   // Update label "Harga Efektif" biar jelas dari mana harganya
   const priceLabel = document.querySelector("[data-sale-price-label]");
@@ -1442,10 +1489,11 @@ function saveSaleFromForm(){
   // normalValue = harga sebelum diskon (hanya ada kalau promo aktif)
   const normalValue  = promoActive && sellingPrice > priceValue ? sellingPrice : 0;
 
-  const buyer  = document.querySelector("[data-sale-buyer]").value.trim();
-  const nick   = document.querySelector("[data-sale-nick]").value.trim();
-  const ref    = document.querySelector("[data-sale-ref]").value.trim();
-  const qrText = document.querySelector("[data-sale-qrtext]").value.trim();
+  const buyer        = document.querySelector("[data-sale-buyer]").value.trim();
+  const nick         = document.querySelector("[data-sale-nick]").value.trim();
+  const ref          = document.querySelector("[data-sale-ref]").value.trim();
+  const qrText       = document.querySelector("[data-sale-qrtext]").value.trim();
+  const supplierName = document.querySelector("[data-sale-supplier]")?.value.trim() || "";
 
   const dateInput = document.querySelector("[data-sale-date]").value;
   const now = new Date();
@@ -1466,6 +1514,7 @@ function saveSaleFromForm(){
     nick,
     ref,
     qrText,
+    supplierName,
   };
 
   saveOrderSafely(order);
@@ -1765,3 +1814,96 @@ saveGames();
 navigateTo("dashboard");
 
 window.readOrders = readOrders;
+
+// ─────────────────────────────────────────────
+//  SUPPLIER — CRUD
+// ─────────────────────────────────────────────
+let editingSupplierId = null;
+const supplierModal = document.querySelector("[data-supplier-modal]");
+
+function countProductsForSupplier(supplierId){
+  let count = 0;
+  games.forEach(g => g.products.forEach(p => { if(p.supplierId === supplierId) count++; }));
+  return count;
+}
+
+function renderSupplierPage(){
+  const body = document.querySelector("[data-supplier-table-body]");
+  if(!body) return;
+  if(!suppliers.length){
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">Belum ada supplier. Klik "+ Tambah Supplier" untuk mulai.</td></tr>`;
+    return;
+  }
+  body.innerHTML = suppliers.map((s, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td>${countProductsForSupplier(s.id)} produk</td>
+      <td>
+        <div class="row-actions">
+          <button class="mini-button" data-edit-supplier="${esc(s.id)}">Edit</button>
+          <button class="delete-button" data-delete-supplier="${esc(s.id)}">Hapus</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function openSupplierModal(id = null){
+  editingSupplierId = id;
+  const s = id ? suppliers.find(x => x.id === id) : null;
+  document.querySelector("[data-supplier-name]").value = s?.name || "";
+  document.querySelector("[data-error='supplier-name']").textContent = "";
+  document.querySelector("#supplier-modal-title").textContent = id ? "Edit Supplier" : "Tambah Supplier";
+  openModal(supplierModal);
+}
+
+function saveSupplierFromForm(){
+  const name = document.querySelector("[data-supplier-name]").value.trim();
+  const errEl = document.querySelector("[data-error='supplier-name']");
+  errEl.textContent = "";
+  if(!name){ errEl.textContent = "Nama supplier wajib diisi."; return; }
+  if(suppliers.some(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== editingSupplierId)){
+    errEl.textContent = "Nama supplier sudah ada."; return;
+  }
+  if(editingSupplierId){
+    const s = suppliers.find(x => x.id === editingSupplierId);
+    if(s){ s.name = name; toast(`Supplier "${name}" diperbarui ✓`); }
+  } else {
+    suppliers.push({ id: crypto.randomUUID(), name, sort_order: suppliers.length });
+    toast(`Supplier "${name}" ditambahkan ✓`);
+  }
+  saveSuppliers();
+  closeModals();
+  renderSupplierPage();
+  populateSupplierDropdowns();
+}
+
+document.querySelector("[data-supplier-table-body]")?.addEventListener("click", async e => {
+  const editBtn = e.target.closest("[data-edit-supplier]");
+  if(editBtn){ openSupplierModal(editBtn.dataset.editSupplier); return; }
+
+  const delBtn = e.target.closest("[data-delete-supplier]");
+  if(delBtn){
+    const id = delBtn.dataset.deleteSupplier;
+    const s = suppliers.find(x => x.id === id);
+    const count = countProductsForSupplier(id);
+    const msg = count > 0
+      ? `Hapus supplier "${s?.name}"? ${count} produk yang pakai supplier ini akan jadi tanpa supplier.`
+      : `Hapus supplier "${s?.name}"?`;
+    const ok = await confirm("Hapus Supplier", msg);
+    if(!ok) return;
+    // lepas dari semua produk
+    games.forEach(g => g.products.forEach(p => { if(p.supplierId === id) delete p.supplierId; }));
+    saveGames();
+    suppliers = suppliers.filter(x => x.id !== id);
+    saveSuppliers();
+    renderSupplierPage();
+    populateSupplierDropdowns();
+    toast(`Supplier "${s?.name}" dihapus ✓`);
+    return;
+  }
+});
+
+document.querySelector("[data-open-supplier-modal]")?.addEventListener("click", () => openSupplierModal(null));
+document.querySelector("[data-save-supplier]")?.addEventListener("click", saveSupplierFromForm);

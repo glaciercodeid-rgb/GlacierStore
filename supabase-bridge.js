@@ -274,6 +274,43 @@
   window.scPushOrder = scPushOrder;
   window.scPullOrders = scPullOrders;
 
+  async function scPullSuppliers() {
+    const sb = window.supabaseClient;
+    const { data, error } = await sb.from("suppliers").select("*").order("sort_order");
+    if (error) throw error;
+    if (data && data.length) {
+      const formatted = data.map(s => ({
+        id: s.id,
+        name: s.name,
+        sort_order: s.sort_order || 0,
+      }));
+      localStorage.setItem("glaciercode_suppliers_v1", JSON.stringify(formatted));
+      return true;
+    }
+    return false;
+  }
+
+  async function scPushSuppliers(supplierList) {
+    const sb = window.supabaseClient;
+    const rows = supplierList.map((s, i) => ({
+      id: s.id,
+      name: s.name,
+      sort_order: i,
+    }));
+    if (rows.length) {
+      const { error } = await sb.from("suppliers").upsert(rows, { onConflict: "id" });
+      if (error) throw error;
+    }
+    // hapus yang sudah tidak ada
+    const keepIds = rows.map(r => r.id);
+    const { data: existing } = await sb.from("suppliers").select("id");
+    const stale = (existing || []).map(r => r.id).filter(id => !keepIds.includes(id));
+    if (stale.length) await sb.from("suppliers").delete().in("id", stale);
+  }
+
+  window.scPullSuppliers = scPullSuppliers;
+  window.scPushSuppliers = scPushSuppliers;
+
   async function scDeleteOrder(orderId) {
     const sb = window.supabaseClient;
     const { error } = await sb.from("sales").delete().eq("order_id", orderId);
