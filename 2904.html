@@ -833,6 +833,15 @@
           document.body.appendChild(script);
         });
 
+        // ── Bulk Edit (tambahan fitur, tidak ubah logic existing) ──
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "bulk-edit.js";
+          script.onload = resolve;
+          script.onerror = () => { console.warn("bulk-edit.js tidak ditemukan, skip."); resolve(); };
+          document.body.appendChild(script);
+        });
+
         document.getElementById("auth-checking-overlay").remove();
 
         // ── Realtime sync: kalau ada perubahan di Supabase, reload data & re-render ──
