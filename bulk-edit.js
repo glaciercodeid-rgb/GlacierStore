@@ -1,142 +1,313 @@
 // ─────────────────────────────────────────────────────────────
-//  GlacierStore — bulk-edit.js
-//  Fitur Bulk Edit Produk (tambahan, tidak ubah logic existing)
-//  Cara pakai: muat setelah admin.js di 2904.html
+//  GlacierStore — bulk-edit.js  (rebuild v2)
+//  • Halaman Bulk Edit sendiri (bukan overlay tabel)
+//  • Pilih game dulu → produk tampil sebagai card
+//  • Semua field bisa di-bulk: status, promo, harga promo,
+//    harga jual, harga modal, promo start/end, supplier
+//  • Filter supplier di halaman Manajemen Produk
+//  • Tidak menyentuh logika admin.js yang existing
 // ─────────────────────────────────────────────────────────────
 
 (function () {
+  "use strict";
 
-  // ── State ──────────────────────────────────────────────────
-  let bulkEditActive = false;
-  let bulkDirty      = {};   // { productIndex: true }
-  let bulkGameId     = null; // game yang sedang di-bulk-edit
+  // ── Util ──────────────────────────────────────────────────
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
 
-  // ── Inject tombol "Bulk Edit" di sebelah "+ Tambah Produk" ──
-  function injectBulkEditButton() {
-    const headActions = document.querySelector("[data-page='products'] .head-actions");
-    if (!headActions || headActions.querySelector("[data-toggle-bulk-edit]")) return;
+  function supplierName(id) {
+    if (!id || !window.suppliers) return "";
+    const s = window.suppliers.find(s => s.id === id);
+    return s ? s.name : "";
+  }
+
+  function allSuppliers() {
+    return window.suppliers || [];
+  }
+
+  // ── State ─────────────────────────────────────────────────
+  let beGameId = null;        // game yang dipilih di bulk editor
+  let selected = new Set();   // index produk yang dicentang
+
+  // ── NAV: tambah item "Bulk Edit" ke sidebar ───────────────
+  function injectBulkNav() {
+    const rail = document.querySelector("[data-rail]");
+    if (!rail || rail.querySelector("[data-nav='bulk']")) return;
+
+    const productsBtn = rail.querySelector("[data-nav='products']");
+    if (!productsBtn) return;
 
     const btn = document.createElement("button");
+    btn.className = "rail-button";
     btn.type = "button";
-    btn.className = "secondary-button";
-    btn.setAttribute("data-toggle-bulk-edit", "");
-    btn.textContent = "✏️ Bulk Edit";
-    headActions.insertBefore(btn, headActions.firstChild);
-
-    btn.addEventListener("click", toggleBulkEdit);
+    btn.setAttribute("data-nav", "bulk");
+    btn.title = "Bulk Edit Produk";
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      <span>Bulk Edit</span>
+    `;
+    productsBtn.insertAdjacentElement("afterend", btn);
   }
 
-  // ── Inject toolbar Bulk Edit (muncul saat mode aktif) ──────
-  function injectBulkToolbar() {
-    const panel = document.querySelector(".product-panel");
-    if (!panel || panel.querySelector("[data-bulk-edit-toolbar]")) return;
+  // ── PAGE: inject halaman bulk ke DOM ─────────────────────
+  function injectBulkPage() {
+    if (document.querySelector("[data-page='bulk']")) return;
+    const draft = document.querySelector("[data-page='draft']");
+    if (!draft) return;
 
-    const bar = document.createElement("div");
-    bar.className = "bulk-edit-toolbar";
-    bar.setAttribute("data-bulk-edit-toolbar", "");
-    bar.hidden = true;
-    bar.innerHTML = `
-      <div class="bulk-toolbar-left">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;">
-          <input type="checkbox" data-bulk-check-all /> Pilih Semua
-        </label>
-        <span class="bulk-selected-count" data-bulk-selected-count>0 dipilih</span>
-      </div>
-      <div class="bulk-toolbar-right">
-        <div class="bulk-quick-actions" data-bulk-quick-actions style="display:none">
-          <select data-bulk-field-action>
-            <option value="">— Ubah field —</option>
-            <option value="status">Status Produk</option>
-            <option value="promoStatus">Aktifkan / Nonaktifkan Promo</option>
-            <option value="promoEnd">Akhir Promo (semua pilihan)</option>
-            <option value="promoStart">Mulai Promo (semua pilihan)</option>
-          </select>
-          <div data-bulk-value-wrap style="display:none">
-            <!-- Konten dinamis sesuai field yang dipilih -->
-          </div>
-          <button class="primary-button" type="button" data-bulk-apply-action style="padding:8px 14px;font-size:13px">Terapkan</button>
+    const page = document.createElement("section");
+    page.className = "admin-page";
+    page.setAttribute("data-page", "bulk");
+    page.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>Bulk Edit Produk</h1>
+          <p>Pilih game, centang produk, ubah beberapa field sekaligus.</p>
         </div>
-        <button class="primary-button" type="button" data-bulk-save-all style="padding:8px 16px;font-size:13px">💾 Simpan Semua</button>
-        <button class="ghost-button" type="button" data-bulk-cancel style="padding:8px 14px;font-size:13px">Batal</button>
+        <div class="head-actions">
+          <button class="primary-button" type="button" data-be-save>💾 Simpan Perubahan</button>
+        </div>
+      </div>
+
+      <div class="be-game-picker" data-be-game-picker></div>
+
+      <div class="be-toolbar" data-be-toolbar>
+        <div class="be-toolbar-left">
+          <label class="be-check-all-label">
+            <input type="checkbox" data-be-check-all />
+            <span>Pilih Semua</span>
+          </label>
+          <span class="be-count-badge" data-be-count>0 dipilih</span>
+        </div>
+        <div class="be-toolbar-right">
+          <div class="be-action-group">
+            <select data-be-field class="be-select">
+              <option value="">— Ubah field untuk yang dipilih —</option>
+              <optgroup label="Status">
+                <option value="status">Status Produk</option>
+              </optgroup>
+              <optgroup label="Harga">
+                <option value="sellingPrice">Harga Jual</option>
+                <option value="costPrice">Harga Modal</option>
+                <option value="promoPrice">Harga Promo</option>
+              </optgroup>
+              <optgroup label="Promo">
+                <option value="promoStatus">Aktif/Nonaktif Promo</option>
+                <option value="promoStart">Mulai Promo</option>
+                <option value="promoEnd">Akhir Promo</option>
+              </optgroup>
+              <optgroup label="Lainnya">
+                <option value="supplierId">Supplier</option>
+              </optgroup>
+            </select>
+            <div data-be-value-wrap class="be-value-wrap"></div>
+            <button class="secondary-button" type="button" data-be-apply>Terapkan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="be-product-grid" data-be-product-grid>
+        <p class="be-empty-hint">Pilih game di atas untuk mulai.</p>
       </div>
     `;
+    draft.insertAdjacentElement("beforebegin", page);
 
-    // Sisipkan tepat di atas tabel
-    const tableWrap = panel.querySelector(".table-wrap");
-    panel.insertBefore(bar, tableWrap);
+    // Events di halaman bulk
+    page.querySelector("[data-be-check-all]").addEventListener("change", onCheckAll);
+    page.querySelector("[data-be-field]").addEventListener("change", onFieldChange);
+    page.querySelector("[data-be-apply]").addEventListener("click", onApply);
+    page.querySelector("[data-be-save]").addEventListener("click", onSave);
 
-    // Event: check all
-    bar.querySelector("[data-bulk-check-all]").addEventListener("change", (e) => {
-      document.querySelectorAll("[data-bulk-row-check]").forEach((cb) => {
-        cb.checked = e.target.checked;
-      });
-      updateBulkSelectedCount();
-      updateQuickActionsVisibility();
+    page.querySelector("[data-be-game-picker]").addEventListener("click", e => {
+      const btn = e.target.closest("[data-be-pick]");
+      if (!btn) return;
+      beGameId = btn.dataset.bePick;
+      selected.clear();
+      renderBEGamePicker();
+      renderBEGrid();
     });
 
-    // Event: field action dropdown
-    bar.querySelector("[data-bulk-field-action]").addEventListener("change", (e) => {
-      renderBulkValueInput(e.target.value);
+    page.querySelector("[data-be-product-grid]").addEventListener("change", e => {
+      const cb = e.target.closest("[data-be-row-check]");
+      if (!cb) return;
+      const idx = Number(cb.dataset.beRowCheck);
+      if (cb.checked) selected.add(idx);
+      else selected.delete(idx);
+      // Update visual card
+      const card = page.querySelector(`[data-be-card="${idx}"]`);
+      if (card) card.classList.toggle("is-checked", cb.checked);
+      updateBECount();
+      syncCheckAll();
     });
 
-    // Event: terapkan ke semua yang dipilih
-    bar.querySelector("[data-bulk-apply-action]").addEventListener("click", applyBulkFieldAction);
-
-    // Event: simpan semua
-    bar.querySelector("[data-bulk-save-all]").addEventListener("click", saveBulkEdit);
-
-    // Event: batal
-    bar.querySelector("[data-bulk-cancel]").addEventListener("click", exitBulkEdit);
+    // Klik pada card (bukan checkbox) toggle centang
+    page.querySelector("[data-be-product-grid]").addEventListener("click", e => {
+      const card = e.target.closest("[data-be-card]");
+      if (!card) return;
+      if (e.target.closest("[data-be-row-check]")) return; // biarkan checkbox handle sendiri
+      const idx = Number(card.dataset.beCard);
+      const cb = card.querySelector("[data-be-row-check]");
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+    });
   }
 
-  // ── Render input sesuai field yang dipilih ─────────────────
-  function renderBulkValueInput(field) {
-    const wrap = document.querySelector("[data-bulk-value-wrap]");
-    if (!wrap) return;
-    wrap.style.display = field ? "" : "none";
+  // ── Render pilih game di bulk page ────────────────────────
+  function renderBEGamePicker() {
+    const picker = document.querySelector("[data-page='bulk'] [data-be-game-picker]");
+    if (!picker) return;
+    picker.innerHTML = (window.games || []).map(g => `
+      <button class="game-chip ${g.id === beGameId ? "is-active" : ""} ${g.status !== "normal" ? "is-maint" : ""}"
+        type="button" data-be-pick="${esc(g.id)}">
+        ${esc(g.initials)} <span>${esc(g.name)}</span>
+      </button>
+    `).join("");
+  }
 
-    if (field === "status") {
-      wrap.innerHTML = `
-        <select data-bulk-value style="padding:7px 10px;border:1px solid #d8dde2;border-radius:8px;font:inherit;font-size:13px">
-          <option value="normal">Normal (Aktif)</option>
-          <option value="soldout">Stok Habis</option>
-          <option value="gangguan">Gangguan</option>
-        </select>
-      `;
-    } else if (field === "promoStatus") {
-      wrap.innerHTML = `
-        <select data-bulk-value style="padding:7px 10px;border:1px solid #d8dde2;border-radius:8px;font:inherit;font-size:13px">
-          <option value="on">Aktifkan Promo</option>
-          <option value="off">Nonaktifkan Promo</option>
-        </select>
-      `;
-    } else if (field === "promoEnd" || field === "promoStart") {
-      wrap.innerHTML = `
-        <input type="datetime-local" data-bulk-value
-          style="padding:7px 10px;border:1px solid #d8dde2;border-radius:8px;font:inherit;font-size:13px" />
-      `;
-    } else {
-      wrap.innerHTML = "";
+  // ── Render grid card produk ────────────────────────────────
+  function renderBEGrid() {
+    const grid = document.querySelector("[data-page='bulk'] [data-be-product-grid]");
+    if (!grid) return;
+
+    const g = (window.games || []).find(x => x.id === beGameId);
+    if (!g) {
+      grid.innerHTML = `<p class="be-empty-hint">Pilih game di atas untuk mulai.</p>`;
+      return;
     }
-  }
-
-  // ── Terapkan field action ke semua produk yang dicentang ───
-  function applyBulkFieldAction() {
-    const field = document.querySelector("[data-bulk-field-action]")?.value;
-    const valueEl = document.querySelector("[data-bulk-value]");
-    const value = valueEl?.value;
-
-    if (!field || !value) {
-      toast("Pilih field dan nilai yang ingin diterapkan.", "error");
+    if (!g.products.length) {
+      grid.innerHTML = `<p class="be-empty-hint">Game ini belum punya produk.</p>`;
       return;
     }
 
-    const g = games.find((x) => x.id === bulkGameId);
+    grid.innerHTML = g.products.map((p, i) => {
+      const isChecked = selected.has(i);
+      const sName = supplierName(p.supplierId);
+      const promoActive = p.promo && p.promoPrice;
+      let statusClass = "be-badge-ok", statusLabel = "Normal";
+      if (p.status === "soldout") { statusClass = "be-badge-warn"; statusLabel = "Stok Habis"; }
+      if (p.status === "gangguan") { statusClass = "be-badge-err"; statusLabel = "Gangguan"; }
+
+      return `
+        <div class="be-card ${isChecked ? "is-checked" : ""}" data-be-card="${i}">
+          <div class="be-card-check-area">
+            <input type="checkbox" class="be-cb" data-be-row-check="${i}" ${isChecked ? "checked" : ""} />
+          </div>
+          <div class="be-card-body">
+            <div class="be-card-name">${esc(p.name)}</div>
+            <div class="be-card-meta">
+              <span class="be-badge ${statusClass}">${statusLabel}</span>
+              ${promoActive ? `<span class="be-badge be-badge-promo">Promo</span>` : ""}
+              ${sName ? `<span class="be-badge be-badge-supplier">${esc(sName)}</span>` : ""}
+            </div>
+            <div class="be-card-prices">
+              <span>Jual: <strong>${esc(p.sellingPrice || p.price || "—")}</strong></span>
+              ${p.costPrice ? `<span>Modal: <strong>${esc(p.costPrice)}</strong></span>` : ""}
+              ${promoActive ? `<span>Promo: <strong>${esc(p.promoPrice)}</strong></span>` : ""}
+            </div>
+            ${p.promoStart || p.promoEnd ? `
+            <div class="be-card-dates">
+              ${p.promoStart ? `<span>Mulai: ${esc(p.promoStart.slice(0, 16).replace("T", " "))}</span>` : ""}
+              ${p.promoEnd ? `<span>Selesai: ${esc(p.promoEnd.slice(0, 16).replace("T", " "))}</span>` : ""}
+            </div>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    updateBECount();
+    syncCheckAll();
+  }
+
+  // ── Pilih Semua ───────────────────────────────────────────
+  function onCheckAll(e) {
+    const g = (window.games || []).find(x => x.id === beGameId);
+    if (!g) return;
+    if (e.target.checked) {
+      g.products.forEach((_, i) => selected.add(i));
+    } else {
+      selected.clear();
+    }
+    renderBEGrid();
+  }
+
+  function syncCheckAll() {
+    const cb = document.querySelector("[data-page='bulk'] [data-be-check-all]");
+    if (!cb) return;
+    const g = (window.games || []).find(x => x.id === beGameId);
+    if (!g || !g.products.length) { cb.checked = false; cb.indeterminate = false; return; }
+    if (selected.size === 0) { cb.checked = false; cb.indeterminate = false; }
+    else if (selected.size === g.products.length) { cb.checked = true; cb.indeterminate = false; }
+    else { cb.checked = false; cb.indeterminate = true; }
+  }
+
+  function updateBECount() {
+    const el = document.querySelector("[data-page='bulk'] [data-be-count]");
+    if (el) el.textContent = `${selected.size} dipilih`;
+  }
+
+  // ── Render input nilai sesuai field ───────────────────────
+  function onFieldChange(e) {
+    const field = e.target.value;
+    const wrap = document.querySelector("[data-page='bulk'] [data-be-value-wrap]");
+    if (!wrap) return;
+    if (!field) { wrap.innerHTML = ""; return; }
+
+    if (field === "status") {
+      wrap.innerHTML = `
+        <select class="be-select" data-be-value>
+          <option value="normal">Normal (Aktif)</option>
+          <option value="soldout">Stok Habis</option>
+          <option value="gangguan">Gangguan</option>
+        </select>`;
+    } else if (field === "promoStatus") {
+      wrap.innerHTML = `
+        <select class="be-select" data-be-value>
+          <option value="on">Aktifkan Promo</option>
+          <option value="off">Nonaktifkan Promo</option>
+        </select>`;
+    } else if (field === "supplierId") {
+      const opts = allSuppliers().map(s =>
+        `<option value="${esc(s.id)}">${esc(s.name)}</option>`
+      ).join("");
+      wrap.innerHTML = `
+        <select class="be-select" data-be-value>
+          <option value="">— Tidak ada —</option>
+          ${opts}
+        </select>`;
+    } else if (field === "promoStart" || field === "promoEnd") {
+      wrap.innerHTML = `<input type="datetime-local" class="be-input" data-be-value />`;
+    } else {
+      // sellingPrice, costPrice, promoPrice
+      wrap.innerHTML = `<input type="text" class="be-input" data-be-value placeholder="Contoh: Rp15.000" />`;
+    }
+  }
+
+  // ── Terapkan ke semua yang dipilih ────────────────────────
+  function onApply() {
+    if (selected.size === 0) {
+      if (window.toast) window.toast("Pilih produk terlebih dahulu.", "error");
+      return;
+    }
+    const field = document.querySelector("[data-page='bulk'] [data-be-field]")?.value;
+    const valueEl = document.querySelector("[data-page='bulk'] [data-be-value]");
+    const value = valueEl?.value ?? "";
+
+    if (!field) {
+      if (window.toast) window.toast("Pilih field yang ingin diubah.", "error");
+      return;
+    }
+
+    const g = (window.games || []).find(x => x.id === beGameId);
     if (!g) return;
 
-    let count = 0;
-    document.querySelectorAll("[data-bulk-row-check]:checked").forEach((cb) => {
-      const i = Number(cb.dataset.bulkRowCheck);
+    selected.forEach(i => {
       const p = g.products[i];
       if (!p) return;
 
@@ -153,426 +324,448 @@
           p.price = p.sellingPrice || p.price;
           p.normal = "";
         }
-      } else if (field === "promoEnd") {
-        p.promoEnd = value;
-        if (p.promoPrice) p.promo = true;
+      } else if (field === "sellingPrice") {
+        p.sellingPrice = value;
+        if (!p.promoPrice) { p.price = value; p.normal = ""; }
+      } else if (field === "costPrice") {
+        p.costPrice = value;
+      } else if (field === "promoPrice") {
+        p.promoPrice = value;
+        p.promo = Boolean(value);
+        if (value) { p.price = value; p.normal = p.sellingPrice; }
+        else { p.price = p.sellingPrice || p.price; p.normal = ""; }
       } else if (field === "promoStart") {
         p.promoStart = value;
         if (p.promoPrice) p.promo = true;
+      } else if (field === "promoEnd") {
+        p.promoEnd = value;
+        if (p.promoPrice) p.promo = true;
+      } else if (field === "supplierId") {
+        p.supplierId = value;
       }
-
-      bulkDirty[i] = true;
-      count++;
     });
 
-    if (count === 0) {
-      toast("Pilih produk terlebih dahulu.", "error");
+    renderBEGrid();
+
+    const labels = {
+      status: "Status", promoStatus: "Status promo", sellingPrice: "Harga jual",
+      costPrice: "Harga modal", promoPrice: "Harga promo",
+      promoStart: "Mulai promo", promoEnd: "Akhir promo", supplierId: "Supplier"
+    };
+    if (window.toast) window.toast(`${labels[field] || field} diterapkan ke ${selected.size} produk.`);
+  }
+
+  // ── Simpan ────────────────────────────────────────────────
+  function onSave() {
+    if (typeof window.saveGames === "function") {
+      window.saveGames();
+      if (window.toast) window.toast("Perubahan disimpan ✓");
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  FILTER SUPPLIER di halaman Manajemen Produk
+  // ═══════════════════════════════════════════════════════════
+
+  let supplierFilter = "";  // "" = semua, "__none__" = tanpa supplier, atau id supplier
+
+  function injectSupplierFilter() {
+    const productHead = document.querySelector(".product-head");
+    if (!productHead || productHead.querySelector("[data-supplier-filter]")) return;
+
+    const filterWrap = document.createElement("div");
+    filterWrap.className = "supplier-filter-bar";
+    filterWrap.innerHTML = `
+      <label class="supplier-filter-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+        Filter Supplier:
+        <select data-supplier-filter class="be-select">
+          <option value="">Semua Supplier</option>
+        </select>
+      </label>
+    `;
+    productHead.appendChild(filterWrap);
+
+    filterWrap.querySelector("[data-supplier-filter]").addEventListener("change", e => {
+      supplierFilter = e.target.value;
+      applySupplierFilter();
+    });
+  }
+
+  function refreshSupplierFilterOptions() {
+    const sel = document.querySelector("[data-supplier-filter]");
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML =
+      `<option value="">Semua Supplier</option>` +
+      allSuppliers().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("") +
+      `<option value="__none__">— Tanpa Supplier —</option>`;
+    // Pertahankan pilihan sebelumnya kalau masih valid
+    if (current) sel.value = current;
+  }
+
+  function applySupplierFilter() {
+    if (!supplierFilter) {
+      // Tidak ada filter → render normal via admin.js
+      if (typeof window._origRenderProductTable === "function") {
+        window._origRenderProductTable();
+      }
+      updateProductSummary();
       return;
     }
 
-    // Re-render tabel bulk supaya nilai baru kelihatan
-    renderBulkTable();
-    toast(`${field === "status" ? "Status" : field === "promoStatus" ? "Status promo" : field === "promoEnd" ? "Akhir promo" : "Mulai promo"} diterapkan ke ${count} produk.`);
-  }
-
-  // ── Toggle Bulk Edit mode ──────────────────────────────────
-  function toggleBulkEdit() {
-    if (bulkEditActive) {
-      exitBulkEdit();
-    } else {
-      enterBulkEdit();
-    }
-  }
-
-  function enterBulkEdit() {
-    bulkEditActive = true;
-    bulkDirty = {};
-    bulkGameId = activeGameId;
-
-    const btn = document.querySelector("[data-toggle-bulk-edit]");
-    if (btn) { btn.textContent = "✕ Keluar Bulk Edit"; btn.classList.add("danger"); }
-
-    const toolbar = document.querySelector("[data-bulk-edit-toolbar]");
-    if (toolbar) toolbar.hidden = false;
-
-    // Sembunyikan tombol normal yang tidak relevan saat bulk edit
-    const addBtn = document.querySelector("[data-open-product-modal]");
-    if (addBtn) addBtn.style.display = "none";
-
-    renderBulkTable();
-  }
-
-  function exitBulkEdit() {
-    bulkEditActive = false;
-    bulkDirty = {};
-    bulkGameId = null;
-
-    const btn = document.querySelector("[data-toggle-bulk-edit]");
-    if (btn) { btn.textContent = "✏️ Bulk Edit"; btn.classList.remove("danger"); }
-
-    const toolbar = document.querySelector("[data-bulk-edit-toolbar]");
-    if (toolbar) toolbar.hidden = true;
-
-    const addBtn = document.querySelector("[data-open-product-modal]");
-    if (addBtn) addBtn.style.display = "";
-
-    // Kembalikan tabel ke tampilan normal
-    renderProductPage();
-  }
-
-  // ── Render tabel dalam mode bulk ───────────────────────────
-  function renderBulkTable() {
-    const g = games.find((x) => x.id === bulkGameId);
+    const g = (window.games || []).find(x => x.id === window.activeGameId);
     if (!g) return;
 
     const tbody = document.querySelector("[data-product-table]");
     if (!tbody) return;
 
-    if (!g.products.length) {
-      tbody.innerHTML = `<tr><td colspan="10" style="color:#5f6672;padding:20px;text-align:center">Belum ada produk.</td></tr>`;
+    const filtered = g.products
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => {
+        if (supplierFilter === "__none__") return !p.supplierId;
+        return p.supplierId === supplierFilter;
+      });
+
+    updateProductSummary(filtered.length, g.products.length);
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="color:#5f6672;padding:20px;text-align:center">
+        Tidak ada produk untuk supplier ini.
+      </td></tr>`;
       return;
     }
 
-    tbody.innerHTML = g.products
-      .map((p, i) => {
-        const isDirty = bulkDirty[i];
-        const sellingPrice = p.sellingPrice || p.normal || p.price || "";
-        const promoPrice   = p.promoPrice   || (p.promo ? p.price : "") || "";
-        const promoStart   = p.promoStart || "";
-        const promoEnd     = p.promoEnd   || "";
+    function getPS(p) {
+      if (!p.promo && !p.promoPrice) return { label: "-", cls: "" };
+      const now = new Date();
+      const start = p.promoStart ? new Date(p.promoStart) : null;
+      const end = p.promoEnd ? new Date(p.promoEnd) : null;
+      if (start && start > now) return { label: "Scheduled", cls: "status-scheduled" };
+      if (end && end < now) return { label: "Expired Promo", cls: "status-expired" };
+      return { label: "Active", cls: "status-active" };
+    }
 
-        return `
-        <tr class="bulk-row ${isDirty ? "bulk-row-dirty" : ""}" data-bulk-product-row="${i}">
-          <td style="width:36px;text-align:center;">
-            <input type="checkbox" data-bulk-row-check="${i}" style="width:16px;height:16px;cursor:pointer" />
-          </td>
-          <td style="min-width:140px;font-weight:700;font-size:13px">${esc(p.name)}</td>
+    tbody.innerHTML = filtered.map(({ p, i }) => {
+      const ps = getPS(p);
+      const unavail = p.status !== "normal";
+      const selVal = p.sellingPrice || p.normal || p.price || "";
+      const promoVal = p.promoPrice || (p.promo ? p.price : "") || "";
+      const badge = ps.cls
+        ? `<span class="status-badge-table ${ps.cls}">${ps.label}</span>`
+        : `<span class="muted-cell">—</span>`;
+      const statusBadge = unavail
+        ? `<span class="status-badge-table ${p.status === "soldout" ? "status-expired" : "status-scheduled"}">${p.status === "soldout" ? "Stok Habis" : "Gangguan"}</span>`
+        : `<span class="status-badge-table status-active">Normal</span>`;
+      const sName = supplierName(p.supplierId);
+      return `
+        <tr class="${unavail ? "is-unavailable" : ""}" data-product-index="${i}" draggable="true" data-drag-product-index="${i}">
+          <td class="drag-cell"><span class="drag-handle" title="Geser untuk urutkan">⠿</span></td>
+          <td><strong>${esc(p.name)}</strong></td>
+          <td>${sName ? `<span class="supplier-chip">${esc(sName)}</span>` : `<span class="muted-cell">—</span>`}</td>
+          <td><input type="text" value="${esc(p.costPrice)}" data-inline-field="costPrice" /></td>
+          <td><input type="text" value="${esc(selVal)}" data-inline-field="sellingPrice" /></td>
+          <td><input type="checkbox" ${p.promo || promoVal ? "checked" : ""} data-inline-field="promo" /></td>
+          <td><input type="text" value="${esc(promoVal)}" data-inline-field="promoPrice" /></td>
+          <td>${badge}</td>
+          <td>${statusBadge}</td>
           <td>
-            <input type="text"
-              class="bulk-input"
-              value="${esc(sellingPrice)}"
-              data-bulk-field="sellingPrice"
-              data-bulk-index="${i}"
-              placeholder="Harga Jual"
-              title="Harga Jual"
-            />
-          </td>
-          <td>
-            <input type="checkbox"
-              class="bulk-check"
-              ${p.promo || promoPrice ? "checked" : ""}
-              data-bulk-field="promo"
-              data-bulk-index="${i}"
-              title="Promo Aktif"
-            />
-          </td>
-          <td>
-            <input type="text"
-              class="bulk-input"
-              value="${esc(promoPrice)}"
-              data-bulk-field="promoPrice"
-              data-bulk-index="${i}"
-              placeholder="Harga Promo"
-              title="Harga Promo"
-            />
-          </td>
-          <td>
-            <input type="datetime-local"
-              class="bulk-input bulk-input-date"
-              value="${esc(promoStart)}"
-              data-bulk-field="promoStart"
-              data-bulk-index="${i}"
-              title="Mulai Promo"
-            />
-          </td>
-          <td>
-            <input type="datetime-local"
-              class="bulk-input bulk-input-date"
-              value="${esc(promoEnd)}"
-              data-bulk-field="promoEnd"
-              data-bulk-index="${i}"
-              title="Akhir Promo"
-            />
-          </td>
-          <td>
-            <select class="bulk-select" data-bulk-field="status" data-bulk-index="${i}" title="Status Produk">
-              <option value="normal"  ${p.status === "normal"   ? "selected" : ""}>Normal</option>
-              <option value="soldout" ${p.status === "soldout"  ? "selected" : ""}>Stok Habis</option>
-              <option value="gangguan"${p.status === "gangguan" ? "selected" : ""}>Gangguan</option>
-            </select>
-          </td>
-          <td style="width:60px;text-align:center">
-            ${isDirty ? `<span class="bulk-dirty-badge" title="Ada perubahan belum disimpan">●</span>` : ""}
+            <div class="row-actions">
+              <button class="icon-action" type="button" data-edit-product="${i}" title="Edit">✏️</button>
+              <button class="icon-action danger" type="button" data-delete-product="${i}" title="Hapus">🗑</button>
+            </div>
           </td>
         </tr>
       `;
-      })
-      .join("");
+    }).join("");
+  }
 
-    // Attach event listeners untuk inline edit
-    tbody.querySelectorAll("[data-bulk-field]").forEach((el) => {
-      const eventName = el.type === "checkbox" ? "change" : "input";
-      el.addEventListener(eventName, (e) => {
-        handleBulkFieldChange(e.target);
-      });
+  function updateProductSummary(shown, total) {
+    const summary = document.querySelector("[data-product-summary]");
+    const g = (window.games || []).find(x => x.id === window.activeGameId);
+    if (!summary || !g) return;
+    if (shown != null && shown !== total) {
+      const filterLabel = supplierFilter === "__none__"
+        ? "Tanpa Supplier"
+        : supplierName(supplierFilter) || "Supplier";
+      summary.textContent = `Menampilkan ${shown} dari ${total} produk · Filter: ${filterLabel}`;
+    } else {
+      summary.textContent = `${g.products.length} varian. Status: ${g.status !== "normal" ? `⚠ ${g.status}` : "✅ Aktif"}`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Patch renderProductPage bawaan admin.js
+  // ═══════════════════════════════════════════════════════════
+
+  function patchRenderProductPage() {
+    if (window._bePatched) return;
+    if (typeof window.renderProductPage !== "function") return;
+
+    // Simpan original juga untuk renderProductTable
+    if (typeof window.renderProductTable === "function") {
+      window._origRenderProductTable = window.renderProductTable;
+    }
+
+    const origRPP = window.renderProductPage;
+    window.renderProductPage = function () {
+      origRPP();
+      injectSupplierFilter();
+      refreshSupplierFilterOptions();
+      // Terapkan filter kalau aktif
+      if (supplierFilter) applySupplierFilter();
+    };
+
+    window._bePatched = true;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Hook navigasi sidebar
+  // ═══════════════════════════════════════════════════════════
+
+  function hookNavigation() {
+    if (window._beNavHooked) return;
+
+    document.querySelector("[data-rail]")?.addEventListener("click", e => {
+      const btn = e.target.closest("[data-nav]");
+      if (btn && btn.dataset.nav === "bulk") {
+        setTimeout(showBulkPage, 10);
+      }
     });
 
-    // Event: klik checkbox baris → update count
-    tbody.querySelectorAll("[data-bulk-row-check]").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        updateBulkSelectedCount();
-        updateQuickActionsVisibility();
-      });
-    });
-
-    updateBulkSelectedCount();
-    updateQuickActionsVisibility();
+    window._beNavHooked = true;
   }
 
-  // ── Handle perubahan field inline ─────────────────────────
-  function handleBulkFieldChange(el) {
-    const field = el.dataset.bulkField;
-    const i     = Number(el.dataset.bulkIndex);
-    const g     = games.find((x) => x.id === bulkGameId);
-    if (!g) return;
-    const p = g.products[i];
-    if (!p) return;
+  function showBulkPage() {
+    document.querySelectorAll(".admin-page.is-active").forEach(p => p.classList.remove("is-active"));
+    document.querySelector("[data-page='bulk']")?.classList.add("is-active");
 
-    if (field === "promo") {
-      p.promo = el.checked;
-      if (!el.checked) {
-        p.promoPrice = "";
-        p.promoStart = "";
-        p.promoEnd   = "";
-        p.price  = p.sellingPrice || p.price;
-        p.normal = "";
-      }
-    } else if (field === "sellingPrice") {
-      p.sellingPrice = el.value.trim();
-      if (!p.promoPrice) {
-        p.price  = p.sellingPrice;
-        p.normal = "";
-      }
-    } else if (field === "promoPrice") {
-      p.promoPrice = el.value.trim();
-      p.promo      = Boolean(p.promoPrice);
-      p.price      = p.promoPrice || p.sellingPrice || p.price;
-      p.normal     = p.promoPrice ? p.sellingPrice : "";
-    } else if (field === "promoStart") {
-      p.promoStart = el.value;
-      if (p.promoPrice) p.promo = true;
-    } else if (field === "promoEnd") {
-      p.promoEnd = el.value;
-      if (p.promoPrice) p.promo = true;
-    } else if (field === "status") {
-      p.status = el.value;
-    }
+    document.querySelectorAll(".rail-button.is-active").forEach(b => b.classList.remove("is-active"));
+    document.querySelector("[data-nav='bulk']")?.classList.add("is-active");
 
-    bulkDirty[i] = true;
+    const label = document.querySelector("[data-page-label]");
+    if (label) label.textContent = "Bulk Edit";
 
-    // Tandai baris dirty secara visual tanpa re-render penuh
-    const row = document.querySelector(`[data-bulk-product-row="${i}"]`);
-    if (row) {
-      row.classList.add("bulk-row-dirty");
-      let badge = row.querySelector(".bulk-dirty-badge");
-      if (!badge) {
-        const lastTd = row.querySelector("td:last-child");
-        if (lastTd) lastTd.innerHTML = `<span class="bulk-dirty-badge" title="Ada perubahan belum disimpan">●</span>`;
+    renderBEGamePicker();
+    if (beGameId) renderBEGrid();
+    else {
+      // Auto-pilih game pertama kalau belum ada pilihan
+      const firstGame = (window.games || [])[0];
+      if (firstGame) {
+        beGameId = firstGame.id;
+        renderBEGamePicker();
+        renderBEGrid();
       }
     }
   }
 
-  // ── Simpan semua perubahan bulk ────────────────────────────
-  function saveBulkEdit() {
-    const dirtyCount = Object.keys(bulkDirty).length;
-    if (dirtyCount === 0) {
-      toast("Tidak ada perubahan untuk disimpan.", "warn");
-      return;
-    }
+  // ═══════════════════════════════════════════════════════════
+  //  CSS
+  // ═══════════════════════════════════════════════════════════
+  function injectStyles() {
+    if (document.querySelector("#be-styles")) return;
+    const style = document.createElement("style");
+    style.id = "be-styles";
+    style.textContent = `
+      /* ── Bulk Edit: game picker ── */
+      .be-game-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
 
-    saveGames(); // pakai saveGames() yang sudah di-patch di 2904.html (termasuk checkDirtyGames)
-    toast(`${dirtyCount} produk berhasil disimpan ✓`);
+      /* ── Bulk Edit: toolbar ── */
+      .be-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        background: #f0faf9;
+        border: 1px solid #0b8f87;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+      }
+      .be-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .be-check-all-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+      }
+      .be-check-all-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #0b8f87;
+        flex-shrink: 0;
+      }
+      .be-count-badge {
+        font-size: 12px;
+        font-weight: 700;
+        color: #0b8f87;
+        background: #d6f5f3;
+        padding: 3px 10px;
+        border-radius: 20px;
+        white-space: nowrap;
+      }
+      .be-toolbar-right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+      .be-action-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-    // Reset dirty state & re-render tabel
-    bulkDirty = {};
-    renderBulkTable();
-  }
+      .be-select {
+        padding: 7px 10px;
+        border: 1px solid #d8dde2;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        background: #fff;
+        cursor: pointer;
+      }
+      .be-input {
+        padding: 7px 10px;
+        border: 1px solid #d8dde2;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        background: #fff;
+        min-width: 130px;
+      }
+      .be-select:focus, .be-input:focus {
+        outline: 2px solid #0b8f87;
+        outline-offset: 1px;
+      }
+      .be-value-wrap { display: flex; align-items: center; }
 
-  // ── Update counter "N dipilih" ─────────────────────────────
-  function updateBulkSelectedCount() {
-    const checked = document.querySelectorAll("[data-bulk-row-check]:checked").length;
-    const el = document.querySelector("[data-bulk-selected-count]");
-    if (el) el.textContent = checked > 0 ? `${checked} dipilih` : "0 dipilih";
-  }
+      /* ── Bulk Edit: card grid ── */
+      .be-product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .be-card {
+        background: #fff;
+        border: 2px solid #e8edf2;
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        cursor: pointer;
+        transition: border-color .15s, box-shadow .15s, background .15s;
+      }
+      .be-card:hover {
+        border-color: #0b8f87;
+        box-shadow: 0 2px 10px rgba(11,143,135,.12);
+      }
+      .be-card.is-checked {
+        border-color: #0b8f87;
+        background: #f0faf9;
+      }
+      .be-card-check-area { padding-top: 2px; flex-shrink: 0; }
+      .be-cb {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #0b8f87;
+      }
+      .be-card-body { flex: 1; min-width: 0; }
+      .be-card-name {
+        font-weight: 700;
+        font-size: 14px;
+        color: #14171f;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .be-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+      .be-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        white-space: nowrap;
+      }
+      .be-badge-ok       { background: #d6f5f3; color: #0b8f87; }
+      .be-badge-warn     { background: #fff3cd; color: #856404; }
+      .be-badge-err      { background: #fdeceb; color: #b13d3d; }
+      .be-badge-promo    { background: #ede9fe; color: #6f42c1; }
+      .be-badge-supplier { background: #e2e8f0; color: #475569; }
+      .be-card-prices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: #5f6672;
+      }
+      .be-card-prices strong { color: #14171f; }
+      .be-card-dates {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #5f6672;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .be-empty-hint {
+        color: #5f6672;
+        padding: 32px 0;
+        grid-column: 1 / -1;
+        text-align: center;
+      }
 
-  // ── Tampilkan / sembunyikan quick action bar ───────────────
-  function updateQuickActionsVisibility() {
-    const checked = document.querySelectorAll("[data-bulk-row-check]:checked").length;
-    const qa = document.querySelector("[data-bulk-quick-actions]");
-    if (qa) qa.style.display = checked > 0 ? "flex" : "none";
-  }
-
-  // ── Override thead saat mode bulk ─────────────────────────
-  function overrideBulkTableHeader() {
-    const thead = document.querySelector(".product-table thead tr");
-    if (!thead) return;
-    thead.innerHTML = `
-      <th style="width:36px"></th>
-      <th>Nama Produk</th>
-      <th>Harga Jual</th>
-      <th>Promo</th>
-      <th>Harga Promo</th>
-      <th>Mulai Promo</th>
-      <th>Akhir Promo</th>
-      <th>Status</th>
-      <th></th>
+      /* ── Filter Supplier di Manajemen Produk ── */
+      .supplier-filter-bar {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #f0f2f4;
+      }
+      .supplier-filter-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #14171f;
+        cursor: default;
+      }
+      .supplier-filter-label svg { color: #5f6672; flex-shrink: 0; }
+      .supplier-filter-label select { font-weight: 400; }
     `;
+    document.head.appendChild(style);
   }
 
-  function restoreTableHeader() {
-    const thead = document.querySelector(".product-table thead tr");
-    if (!thead) return;
-    thead.innerHTML = `
-      <th></th>
-      <th>Nama Produk</th>
-      <th>Supplier</th>
-      <th>Harga Modal</th>
-      <th>Harga Jual</th>
-      <th>Promo</th>
-      <th>Harga Promo</th>
-      <th>Status Promo</th>
-      <th>Status Produk</th>
-      <th>Aksi</th>
-    `;
+  // ═══════════════════════════════════════════════════════════
+  //  INIT
+  // ═══════════════════════════════════════════════════════════
+  function init() {
+    injectStyles();
+    injectBulkNav();
+    injectBulkPage();
+    hookNavigation();
+    patchRenderProductPage();
   }
 
-  // ── Patch renderProductPage agar setup bulk tetap terjaga ──
-  // Wrap fungsi existing supaya setelah render normal,
-  // kalau bulk mode aktif, langsung switch ke bulk view.
-  const _origRenderProductPage = window.renderProductPage;
-  window.renderProductPage = function () {
-    _origRenderProductPage?.();
-    injectBulkEditButton();
-    injectBulkToolbar();
-
-    // Kalau bulk mode masih aktif dan game-nya sama, render ulang bulk tabel
-    if (bulkEditActive) {
-      if (bulkGameId !== activeGameId) {
-        // Game berganti, keluar bulk mode dulu
-        exitBulkEdit();
-      } else {
-        overrideBulkTableHeader();
-        renderBulkTable();
-        const toolbar = document.querySelector("[data-bulk-edit-toolbar]");
-        if (toolbar) toolbar.hidden = false;
-        const addBtn = document.querySelector("[data-open-product-modal]");
-        if (addBtn) addBtn.style.display = "none";
-      }
-    }
-  };
-
-  // ── CSS tambahan (inject ke <head>) ───────────────────────
-  const style = document.createElement("style");
-  style.textContent = `
-    /* ── Bulk Edit Toolbar ── */
-    .bulk-edit-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      background: #f0faf9;
-      border: 1px solid #0b8f87;
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 12px;
-    }
-    .bulk-toolbar-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .bulk-toolbar-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .bulk-quick-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .bulk-selected-count {
-      font-size: 12px;
-      font-weight: 700;
-      color: #0b8f87;
-      background: #d6f5f3;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-
-    /* ── Bulk row ── */
-    .bulk-row { transition: background .15s; }
-    .bulk-row:hover { background: #f8fffe; }
-    .bulk-row-dirty { background: #fffbf0 !important; }
-    .bulk-dirty-badge {
-      color: #d97912;
-      font-size: 16px;
-      line-height: 1;
-    }
-
-    /* ── Bulk inputs ── */
-    .bulk-input {
-      width: 100%;
-      min-width: 90px;
-      padding: 6px 8px;
-      border: 1px solid #d8dde2;
-      border-radius: 6px;
-      font: inherit;
-      font-size: 12px;
-      background: #fff;
-      transition: border-color .15s;
-    }
-    .bulk-input:focus {
-      outline: none;
-      border-color: #0b8f87;
-      box-shadow: 0 0 0 2px rgba(11,143,135,.15);
-    }
-    .bulk-input-date { min-width: 150px; font-size: 11px; }
-    .bulk-select {
-      padding: 6px 8px;
-      border: 1px solid #d8dde2;
-      border-radius: 6px;
-      font: inherit;
-      font-size: 12px;
-      background: #fff;
-      cursor: pointer;
-    }
-    .bulk-check {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #0b8f87;
-    }
-
-    /* ── Toggle bulk edit button ── */
-    [data-toggle-bulk-edit].danger {
-      background: #b13d3d !important;
-      color: #fff !important;
-      border-color: #b13d3d !important;
-    }
-  `;
-  document.head.appendChild(style);
-
-  // ── Init saat halaman products pertama kali aktif ──────────
-  // Delay sedikit biar admin.js selesai render dulu
-  setTimeout(() => {
-    if (typeof renderProductPage === "function") {
-      injectBulkEditButton();
-      injectBulkToolbar();
-    }
-  }, 200);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(init, 350));
+  } else {
+    setTimeout(init, 350);
+  }
 
 })();
