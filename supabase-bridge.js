@@ -267,6 +267,7 @@
         nick: o.nick || "",
         ref: o.ref || "",
         qrText: o.qr_text || "",
+        supplierName: o.supplier_name || "",
         createdAt: o.created_at,
       }));
       localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
