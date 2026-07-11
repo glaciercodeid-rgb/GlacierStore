@@ -67,6 +67,7 @@
           promoEnd:   fromSupabaseDate(p.promo_end),
           status: p.status || "normal",
           sortOrder: p.sort_order || 0,
+          supplierId: p.supplier_id || "",
         })),
     }));
 
@@ -118,6 +119,7 @@
           promo_end:   toLocalISO(p.promoEnd),
           status: p.status || "normal",
           sort_order: i,
+          supplier_id: p.supplierId || null,
         });
       });
     });
@@ -204,6 +206,7 @@
       promo_end:   toLocalISO(p.promoEnd),
       status: p.status || "normal",
       sort_order: i,
+      supplier_id: p.supplierId || null,
     }));
     if (productRows.length) {
       const { error: pErr } = await sb.from("products").insert(productRows);
@@ -241,6 +244,7 @@
       nick: order.nick,
       ref: order.ref,
       qr_text: order.qrText,
+      supplier_name: order.supplierName || "",
     });
     if (error) throw error;
   }
@@ -299,13 +303,20 @@
     }));
     if (rows.length) {
       const { error } = await sb.from("suppliers").upsert(rows, { onConflict: "id" });
-      if (error) throw error;
+      if (error) {
+        console.error("scPushSuppliers upsert error:", error);
+        throw error;
+      }
     }
-    // hapus yang sudah tidak ada
+    // hapus supplier yang sudah tidak ada di list lokal
     const keepIds = rows.map(r => r.id);
-    const { data: existing } = await sb.from("suppliers").select("id");
+    const { data: existing, error: selErr } = await sb.from("suppliers").select("id");
+    if (selErr) { console.warn("scPushSuppliers: gagal fetch existing:", selErr); return; }
     const stale = (existing || []).map(r => r.id).filter(id => !keepIds.includes(id));
-    if (stale.length) await sb.from("suppliers").delete().in("id", stale);
+    if (stale.length) {
+      const { error: delErr } = await sb.from("suppliers").delete().in("id", stale);
+      if (delErr) console.warn("scPushSuppliers: gagal hapus stale:", delErr);
+    }
   }
 
   window.scPullSuppliers = scPullSuppliers;

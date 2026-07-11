@@ -1877,6 +1877,8 @@ function saveSupplierFromForm(){
   closeModals();
   renderSupplierPage();
   populateSupplierDropdowns();
+  // Re-render halaman produk juga supaya chip supplier di tabel ikut update
+  if (currentPage === "products") renderProductPage();
 }
 
 document.querySelector("[data-supplier-table-body]")?.addEventListener("click", async e => {
