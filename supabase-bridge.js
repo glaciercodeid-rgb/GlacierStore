@@ -253,27 +253,28 @@
     const sb = window.supabaseClient;
     const { data, error } = await sb.from("sales").select("*").order("created_at", { ascending: false });
     if (error) throw error;
-    if (data && data.length) {
-      const formatted = data.map(o => ({
-        orderId: o.order_id,
-        date: o.date,
-        gameId: o.game_id,
-        gameName: o.game_name,
-        productName: o.product_name,
-        priceValue: Number(o.price_value),
-        costValue: Number(o.cost_value),
-        profitValue: Number(o.profit_value),
-        buyer: o.buyer || "",
-        nick: o.nick || "",
-        ref: o.ref || "",
-        qrText: o.qr_text || "",
-        supplierName: o.supplier_name || "",
-        createdAt: o.created_at,
-      }));
-      localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
-      return true;
-    }
-    return false;
+    // Selalu update localStorage — termasuk saat data kosong ([]) karena semua
+    // transaksi dihapus. Sebelumnya kondisi "data.length > 0" menyebabkan
+    // localStorage tidak pernah diupdate kalau ada penghapusan, sehingga
+    // browser lain tetap membaca data lama.
+    const formatted = (data || []).map(o => ({
+      orderId: o.order_id,
+      date: o.date,
+      gameId: o.game_id,
+      gameName: o.game_name,
+      productName: o.product_name,
+      priceValue: Number(o.price_value),
+      costValue: Number(o.cost_value),
+      profitValue: Number(o.profit_value),
+      buyer: o.buyer || "",
+      nick: o.nick || "",
+      ref: o.ref || "",
+      qrText: o.qr_text || "",
+      supplierName: o.supplier_name || "",
+      createdAt: o.created_at,
+    }));
+    localStorage.setItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1", JSON.stringify(formatted));
+    return true;
   }
 
   window.scPushOrder = scPushOrder;
