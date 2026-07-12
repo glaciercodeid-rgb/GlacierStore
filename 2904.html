@@ -849,7 +849,11 @@
           if (window.GlacierDraft) window.GlacierDraft.checkDirtyGames();
         };
 
-        // saveSettings sudah push ke Supabase secara langsung di admin.js
+        const _saveSettings = saveSettings;
+        saveSettings = function () {
+          _saveSettings();
+          window.scPushSettingsSafe(siteSettings);
+        };
 
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
@@ -880,14 +884,68 @@
           if (page === "settings")   { if(typeof renderSettingsForm==="function") renderSettingsForm(); }
           if (page === "draft")      { if(typeof renderDraftPage   ==="function") renderDraftPage(); }
 
-          // Update draft badge & dashboard stats selalu
           if (typeof updateDraftBadge  === "function") updateDraftBadge();
-          if (typeof renderDashboard   === "function" && page !== "dashboard") {
-            // update stats di background tanpa switch halaman
-          }
-
           console.log("Realtime: halaman", page, "di-refresh karena perubahan di tabel", table);
         });
+
+        // ── Polling aktif untuk sales & settings ─────────────────────────────────────
+        // Supabase Realtime + RLS tidak bisa broadcast event DELETE ke subscriber lain
+        // (row sudah hilang saat RLS di-check). Solusi: polling langsung ke Supabase
+        // setiap 5 detik untuk sales dan settings, bandingkan dengan state lokal,
+        // update hanya kalau ada perbedaan nyata.
+
+        let _lastOrdersHash = "";
+        let _lastSettingsHash = "";
+
+        async function _pollSalesAndSettings() {
+          try {
+            // ── Poll sales ──
+            if (window.scPullOrders) {
+              const prevHash = _lastOrdersHash;
+              await window.scPullOrders();
+              const fresh = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1") || "[]";
+              if (fresh !== prevHash) {
+                _lastOrdersHash = fresh;
+                if (typeof readOrders === "function") orders = readOrders();
+                const page = typeof currentPage !== "undefined" ? currentPage : "";
+                if (page === "sales")   { if (typeof renderSalesPage   === "function") renderSalesPage(); }
+                if (page === "capital") { if (typeof renderCapitalPage === "function") renderCapitalPage(); }
+                if (page === "dashboard") { if (typeof renderDashboard === "function") renderDashboard(); }
+              }
+            }
+
+            // ── Poll settings ──
+            if (window.scPullCatalog) {
+              // scPullCatalog sudah include settings di dalamnya, ambil langsung dari Supabase
+              const { data: settRow } = await window.supabaseClient
+                .from("settings").select("value").eq("key","site_settings").maybeSingle();
+              if (settRow && settRow.value) {
+                const freshSett = JSON.stringify(settRow.value);
+                if (freshSett !== _lastSettingsHash) {
+                  _lastSettingsHash = freshSett;
+                  localStorage.setItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1", freshSett);
+                  if (typeof readSettings  === "function") siteSettings = readSettings();
+                  const page = typeof currentPage !== "undefined" ? currentPage : "";
+                  if (page === "settings")  { if (typeof renderSettingsForm === "function") renderSettingsForm(); }
+                  if (page === "dashboard") { if (typeof renderDashboard    === "function") renderDashboard(); }
+                }
+              }
+            }
+          } catch(e) {
+            // polling gagal (offline dll) — diam saja, coba lagi di interval berikutnya
+          }
+        }
+
+        // Inisialisasi hash awal dari data yang sudah di-pull saat boot
+        _lastOrdersHash   = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY   || "glaciercode_orders_v1")   || "[]";
+        _lastSettingsHash = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+
+        // Poll setiap 5 detik
+        const _pollInterval = setInterval(_pollSalesAndSettings, 5000);
+
+        // Hentikan polling saat logout
+        const _origLogout = document.querySelector("[data-logout-btn]");
+        window._stopPolling = () => clearInterval(_pollInterval);
 
         document.querySelector('[data-nav="draft"]')?.addEventListener("click", () => {
           const label = document.querySelector("[data-page-label]");
@@ -898,6 +956,7 @@
 
       document.querySelector("[data-logout-btn]").addEventListener("click", async () => {
         if (window.scStopRealtime) window.scStopRealtime();
+        if (window._stopPolling)   window._stopPolling();
         await window.supabaseClient.auth.signOut();
         window.location.replace("login.html");
       });
