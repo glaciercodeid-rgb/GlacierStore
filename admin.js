@@ -141,9 +141,13 @@ function saveGames(){
 
 function saveSettings(){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(siteSettings));
+  // push ke Supabase supaya device lain ikut ter-update via realtime
+  if(window.scPushSettingsSafe) window.scPushSettingsSafe(siteSettings).catch(e=>console.warn("Gagal sync settings ke Supabase:", e));
 }
 
 function readOrders(){
+  // Data orders selalu di-pull dari Supabase oleh scPullAll() sebelum admin.js dijalankan
+  // (lihat 2904.html boot sequence). localStorage di sini hanya sebagai cache sementara.
   try{
     const s = localStorage.getItem(ORDERS_KEY);
     const p = s ? JSON.parse(s) : [];
@@ -152,6 +156,8 @@ function readOrders(){
 }
 
 function saveOrders(){
+  // Hanya update cache lokal. Sumber kebenaran (source of truth) tetap Supabase.
+  // Penulisan ke Supabase dilakukan terpisah (scPushOrder / scDeleteOrder).
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
@@ -1688,24 +1694,23 @@ document.querySelector("[data-sales-table-body]")?.addEventListener("click", asy
     const order = orders.find(o=>o.orderId===orderId);
     if(!order){ toast("Transaksi tidak ditemukan.","error"); return; }
     
-    const ok = await confirm("Hapus Transaksi", `Hapus transaksi #${orderId}? Data akan dihapus dari localStorage dan Supabase.`);
+    const ok = await confirm("Hapus Transaksi", `Hapus transaksi #${orderId}?`);
     if(!ok) return;
 
-    orders = orders.filter(o=>o.orderId!==orderId);
-    saveOrders();
-    
+    // Hapus dari Supabase dulu — supaya semua device ikut ter-update via realtime.
+    // Baru setelah berhasil, hapus dari state lokal & localStorage.
     try {
       if (typeof window.scDeleteOrder === "function") {
         await window.scDeleteOrder(orderId);
-        console.log(`Order ${orderId} berhasil dihapus dari Supabase`);
-      } else {
-        console.warn("scDeleteOrder belum ada, data hanya dihapus dari localStorage");
       }
-    } catch (e) {
-      console.warn("Gagal hapus dari Supabase:", e);
-      toast("Data dihapus dari lokal, tetapi gagal dihapus dari cloud. Cek koneksi.", "warn");
+    } catch (err) {
+      console.warn("Gagal hapus dari Supabase:", err);
+      toast("Gagal menghapus dari cloud. Periksa koneksi dan coba lagi.", "error");
+      return; // jangan hapus lokal kalau Supabase gagal — hindari state tidak sinkron
     }
 
+    orders = orders.filter(o=>o.orderId!==orderId);
+    saveOrders();
     renderSalesPage();
     if(currentPage==="capital") renderCapitalPage();
     toast("Transaksi berhasil dihapus ✓");

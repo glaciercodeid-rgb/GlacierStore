@@ -849,11 +849,7 @@
           if (window.GlacierDraft) window.GlacierDraft.checkDirtyGames();
         };
 
-        const _saveSettings = saveSettings;
-        saveSettings = function () {
-          _saveSettings();
-          window.scPushSettingsSafe(siteSettings);
-        };
+        // saveSettings sudah push ke Supabase secara langsung di admin.js
 
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
