@@ -748,3 +748,61 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     }
   });
 });
+// ── Polling realtime untuk landing page ──────────────────────────────────────
+// Pull data terbaru dari Supabase setiap 5 detik.
+// Kalau ada perubahan → re-render otomatis tanpa perlu refresh.
+// Ini mencakup: harga produk, status game (maintenance/segera hadir),
+// jam operasional, info banner, dan sistem maintenance.
+
+let _lastCatalogHash  = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1")  || "[]";
+let _lastSettingsHash = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+
+async function _pollLanding() {
+  try {
+    // ── Poll catalog (games + products) ──
+    if (window.scPullCatalog) {
+      await window.scPullCatalog();
+      const freshCatalog = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY || "glaciercode_catalog_v1") || "[]";
+      if (freshCatalog !== _lastCatalogHash) {
+        _lastCatalogHash = freshCatalog;
+        games = readStoredGames();
+        ensureActiveGame();
+        renderGames();
+        renderPrices(false);
+      }
+
+      // ── Poll settings (ikut di dalam scPullCatalog) ──
+      const freshSettings = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+      if (freshSettings !== _lastSettingsHash) {
+        _lastSettingsHash = freshSettings;
+        const prevBannerEnabled = settings.infoBanner?.enabled;
+        settings = readSettings();
+        // kalau banner baru diaktifkan, reset dismissed
+        if (!prevBannerEnabled && settings.infoBanner?.enabled) {
+          bannerDismissed = false;
+        }
+        renderSettingsText();
+        renderOperationalStatus();
+        // kalau maintenance baru aktif → tampilkan popup
+        if (isGlobalMaintenanceActive()) {
+          showMaintenanceGate();
+        } else {
+          // kalau maintenance sudah selesai dan popup masih buka → tutup
+          if (gateModal.classList.contains("is-open") && gateModal.classList.contains("is-locked-gate")) {
+            gateModal.classList.remove("is-open", "is-locked-gate");
+            gateModal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("is-locked");
+            if (window.gateCountdownInterval) {
+              clearInterval(window.gateCountdownInterval);
+              window.gateCountdownInterval = null;
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    // polling gagal (offline dll) — diam saja, coba lagi interval berikutnya
+  }
+}
+
+setInterval(_pollLanding, 5000);
