@@ -35,10 +35,10 @@
       sb.from("settings").select("value").eq("key", "site_settings").maybeSingle(),
     ]);
     if (gamesRes.error) throw gamesRes.error;
-    if (!gamesRes.data || !gamesRes.data.length) return false;
-
+    // Selalu update localStorage termasuk saat data kosong —
+    // supaya penghapusan semua game juga ter-sync ke browser lain.
     const products = productsRes.data || [];
-    const games = gamesRes.data.map((g) => ({
+    const games = (gamesRes.data || []).map((g) => ({
       id: g.id,
       name: g.name,
       initials: g.initials || "",
@@ -72,6 +72,7 @@
     }));
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+    // Selalu update settings juga — termasuk saat value berubah jadi kosong
     if (settingsRes.data && settingsRes.data.value) {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsRes.data.value));
     }
@@ -284,16 +285,15 @@
     const sb = window.supabaseClient;
     const { data, error } = await sb.from("suppliers").select("*").order("sort_order");
     if (error) throw error;
-    if (data && data.length) {
-      const formatted = data.map(s => ({
-        id: s.id,
-        name: s.name,
-        sort_order: s.sort_order || 0,
-      }));
-      localStorage.setItem("glaciercode_suppliers_v1", JSON.stringify(formatted));
-      return true;
-    }
-    return false;
+    // Selalu update localStorage termasuk saat kosong —
+    // supaya penghapusan supplier ter-sync ke browser lain.
+    const formatted = (data || []).map(s => ({
+      id: s.id,
+      name: s.name,
+      sort_order: s.sort_order || 0,
+    }));
+    localStorage.setItem("glaciercode_suppliers_v1", JSON.stringify(formatted));
+    return true;
   }
 
   async function scPushSuppliers(supplierList) {

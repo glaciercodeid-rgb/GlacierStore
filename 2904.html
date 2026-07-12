@@ -896,55 +896,87 @@
 
         let _lastOrdersHash = "";
         let _lastSettingsHash = "";
+        let _lastCatalogHash = "";
+        let _lastSuppliersHash = "";
 
-        async function _pollSalesAndSettings() {
+        function _rerender(page) {
+          if (page === "dashboard")  { if (typeof renderDashboard   === "function") renderDashboard(); }
+          if (page === "games")      { if (typeof renderGameCards    === "function") renderGameCards(); }
+          if (page === "products")   { if (typeof renderProductPage  === "function") renderProductPage(); }
+          if (page === "sales")      { if (typeof renderSalesPage    === "function") renderSalesPage(); }
+          if (page === "capital")    { if (typeof renderCapitalPage  === "function") renderCapitalPage(); }
+          if (page === "suppliers")  { if (typeof renderSupplierPage === "function") renderSupplierPage(); }
+          if (page === "settings")   { if (typeof renderSettingsForm === "function") renderSettingsForm(); }
+          if (page === "draft")      { if (typeof renderDraftPage    === "function") renderDraftPage(); }
+          if (typeof updateDraftBadge === "function") updateDraftBadge();
+        }
+
+        async function _pollAll() {
           try {
+            const page = typeof currentPage !== "undefined" ? currentPage : "";
+
             // ── Poll sales ──
             if (window.scPullOrders) {
-              const prevHash = _lastOrdersHash;
               await window.scPullOrders();
               const fresh = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY || "glaciercode_orders_v1") || "[]";
-              if (fresh !== prevHash) {
+              if (fresh !== _lastOrdersHash) {
                 _lastOrdersHash = fresh;
                 if (typeof readOrders === "function") orders = readOrders();
-                const page = typeof currentPage !== "undefined" ? currentPage : "";
-                if (page === "sales")   { if (typeof renderSalesPage   === "function") renderSalesPage(); }
-                if (page === "capital") { if (typeof renderCapitalPage === "function") renderCapitalPage(); }
-                if (page === "dashboard") { if (typeof renderDashboard === "function") renderDashboard(); }
+                if (page === "sales")     { if (typeof renderSalesPage   === "function") renderSalesPage(); }
+                if (page === "capital")   { if (typeof renderCapitalPage === "function") renderCapitalPage(); }
+                if (page === "dashboard") { if (typeof renderDashboard   === "function") renderDashboard(); }
               }
             }
 
-            // ── Poll settings ──
+            // ── Poll catalog (games + products + settings) ──
             if (window.scPullCatalog) {
-              // scPullCatalog sudah include settings di dalamnya, ambil langsung dari Supabase
-              const { data: settRow } = await window.supabaseClient
-                .from("settings").select("value").eq("key","site_settings").maybeSingle();
-              if (settRow && settRow.value) {
-                const freshSett = JSON.stringify(settRow.value);
+              await window.scPullCatalog();
+              const freshCatalog = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY || "glaciercode_catalog_v1") || "[]";
+              if (freshCatalog !== _lastCatalogHash) {
+                _lastCatalogHash = freshCatalog;
+                if (typeof readGames    === "function") games        = normalizeGames(readGames());
+                if (typeof readSettings === "function") siteSettings = readSettings();
+                _rerender(page);
+                if (window.GlacierDraft) window.GlacierDraft.snapshotAllGamesAsSynced();
+              } else {
+                // catalog sama tapi settings mungkin beda
+                const freshSett = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
                 if (freshSett !== _lastSettingsHash) {
                   _lastSettingsHash = freshSett;
-                  localStorage.setItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1", freshSett);
-                  if (typeof readSettings  === "function") siteSettings = readSettings();
-                  const page = typeof currentPage !== "undefined" ? currentPage : "";
+                  if (typeof readSettings === "function") siteSettings = readSettings();
                   if (page === "settings")  { if (typeof renderSettingsForm === "function") renderSettingsForm(); }
                   if (page === "dashboard") { if (typeof renderDashboard    === "function") renderDashboard(); }
                 }
               }
             }
+
+            // ── Poll suppliers ──
+            if (window.scPullSuppliers) {
+              await window.scPullSuppliers();
+              const freshSup = localStorage.getItem("glaciercode_suppliers_v1") || "[]";
+              if (freshSup !== _lastSuppliersHash) {
+                _lastSuppliersHash = freshSup;
+                if (typeof readSuppliers === "function") suppliers = readSuppliers();
+                if (page === "suppliers") { if (typeof renderSupplierPage === "function") renderSupplierPage(); }
+                if (page === "products")  { if (typeof renderProductPage  === "function") renderProductPage(); }
+              }
+            }
+
           } catch(e) {
             // polling gagal (offline dll) — diam saja, coba lagi di interval berikutnya
           }
         }
 
         // Inisialisasi hash awal dari data yang sudah di-pull saat boot
-        _lastOrdersHash   = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY   || "glaciercode_orders_v1")   || "[]";
-        _lastSettingsHash = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+        _lastOrdersHash    = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY   || "glaciercode_orders_v1")        || "[]";
+        _lastSettingsHash  = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+        _lastCatalogHash   = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1")       || "[]";
+        _lastSuppliersHash = localStorage.getItem("glaciercode_suppliers_v1")                                        || "[]";
 
-        // Poll setiap 5 detik
-        const _pollInterval = setInterval(_pollSalesAndSettings, 5000);
+        // Poll setiap 5 detik — semua data
+        const _pollInterval = setInterval(_pollAll, 5000);
 
         // Hentikan polling saat logout
-        const _origLogout = document.querySelector("[data-logout-btn]");
         window._stopPolling = () => clearInterval(_pollInterval);
 
         document.querySelector('[data-nav="draft"]')?.addEventListener("click", () => {
