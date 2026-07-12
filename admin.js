@@ -849,37 +849,68 @@ function renderProductTable(){
     const promoVal= p.promoPrice||(p.promo?p.price:"")||"";
     const supName = supplierNameById(p.supplierId);
 
+    // Kalkulasi profit
+    const cost    = parseMoney(p.costPrice);
+    const selling = parseMoney(promoVal||selVal);
+    const profit  = cost && selling ? selling - cost : null;
+    const margin  = profit!==null && selling ? (profit/selling*100) : null;
+    const profitColor = profit===null ? null : profit>=0 ? "#2e9d68" : "#b13d3d";
+    const profitLabel = profit===null ? null
+      : `${profit>=0?"":"−"}${formatIdr(Math.abs(profit))} · ${margin>=0?"+":""}${margin.toFixed(1)}%`;
+
     const statusColor = unavail?(p.status==="soldout"?"#858b93":"#2e79b8"):"#2e9d68";
     const statusLabel = unavail?(p.status==="soldout"?"Stok Habis":"Gangguan"):"Normal";
     const promoColor  = ps.cls==="status-active"?"#2e9d68"
                       : ps.cls==="status-scheduled"?"#2e79b8"
                       : ps.cls==="status-expired"?"#858b93":null;
 
+    // SVG icons
+    const iconEdit = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const iconDel  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
     return `<div class="product-card${unavail?" product-card-unavail":""}"
                draggable="true"
                data-drag-product-index="${i}"
                data-product-index="${i}">
       <span class="pc-drag-handle" title="Geser untuk urutkan">⠿</span>
+
       <div class="pc-top">
         <span class="pc-name">${esc(p.name)}</span>
         <span class="pc-dot" style="background:${statusColor}" title="${statusLabel}"></span>
       </div>
+
       <div class="pc-prices">
         <span class="pc-sell">${esc(selVal||"—")}</span>
         ${promoVal?`<span class="pc-promo">🏷 ${esc(promoVal)}</span>`:""}
       </div>
+
+      ${profitLabel?`<div class="pc-profit" style="color:${profitColor}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="flex-shrink:0">
+          ${profit>=0
+            ? `<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>`
+            : `<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>`}
+        </svg>
+        <span>Profit ${profitLabel}</span>
+      </div>`:""}
+
       <div class="pc-tags">
         ${supName?`<span class="supplier-chip">${esc(supName)}</span>`:`<span class="pc-tag-muted">No supplier</span>`}
         <span class="pc-pill" style="background:${statusColor}20;color:${statusColor}">${statusLabel}</span>
         ${promoColor?`<span class="pc-pill" style="background:${promoColor}20;color:${promoColor}">${ps.label}</span>`:""}
       </div>
+
       ${(p.promoStart||p.promoEnd)?`<div class="pc-sched">
         ${p.promoStart?`<span>▶ ${esc(p.promoStart.slice(0,16).replace("T"," "))}</span>`:""}
         ${p.promoEnd  ?`<span>⏹ ${esc(p.promoEnd.slice(0,16).replace("T"," "))}</span>`:""}
       </div>`:""}
+
       <div class="pc-actions">
-        <button class="mini-button" type="button" data-edit-product="${i}">✏️ Edit</button>
-        <button class="delete-button" style="font-size:12px;padding:0 10px;min-height:32px" type="button" data-delete-product="${i}">🗑</button>
+        <button class="pc-btn-edit" type="button" data-edit-product="${i}" title="Edit produk">
+          ${iconEdit} Edit
+        </button>
+        <button class="pc-btn-del" type="button" data-delete-product="${i}" title="Hapus produk">
+          ${iconDel}
+        </button>
       </div>
     </div>`;
   }).join("");
@@ -2080,6 +2111,18 @@ function renderBulkPage(){
     const suppId  = ed.supplierId   ?? (p.supplierId||"");
     const isDirty = !!bulkEdits[i];
     const statusColor=status==="normal"?"#2e9d68":status==="soldout"?"#858b93":"#2e79b8";
+
+    // Kalkulasi profit pakai nilai yg sedang diedit
+    const costRaw   = parseMoney(p.costPrice);
+    const sellRaw   = parseMoney(promoVal||selVal);
+    const profit    = costRaw && sellRaw ? sellRaw - costRaw : null;
+    const margin    = profit!==null && sellRaw ? (profit/sellRaw*100) : null;
+    const profitColor = profit===null ? "#8b949e" : profit>=0 ? "#2e9d68" : "#b13d3d";
+    const profitText  = profit===null
+      ? "Isi harga modal untuk lihat profit"
+      : `${profit>=0?"+":""}${formatIdr(profit)} · ${margin>=0?"+":""}${margin.toFixed(1)}%`;
+    const supName = supplierNameById(suppId);
+
     return `<div class="bulk-product-row${isDirty?" bulk-row-dirty":""}" data-bulk-row="${i}">
       <div class="bpr-left">
         <input type="checkbox" class="bpr-checkbox" data-bpr-index="${i}"
@@ -2087,6 +2130,17 @@ function renderBulkPage(){
         <span class="pc-dot" style="background:${statusColor};flex-shrink:0"></span>
         <strong style="font-size:13px">${esc(p.name)}</strong>
         ${isDirty?`<span class="bpr-changed-badge">diubah</span>`:""}
+      </div>
+      <div class="bpr-meta">
+        <span class="bpr-profit" style="color:${profitColor}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="flex-shrink:0">
+            ${profit!==null&&profit<0
+              ? `<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>`
+              : `<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>`}
+          </svg>
+          ${profitText}
+        </span>
+        ${supName?`<span class="supplier-chip">${esc(supName)}</span>`:""}
       </div>
       <div class="bpr-fields">
         <label class="bpr-field"><span>Harga Jual</span>

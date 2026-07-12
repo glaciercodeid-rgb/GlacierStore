@@ -1593,3 +1593,72 @@ textarea {
   .product-card-grid { grid-template-columns: 1fr; }
   .bpr-fields { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Product card: profit & new action buttons ── */
+.pc-profit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f4fdf8;
+  border-radius: 7px;
+  padding: 5px 9px;
+}
+.pc-profit span { line-height: 1; }
+
+.pc-btn-edit {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid #b8ded9;
+  border-radius: 7px;
+  background: var(--teal-soft);
+  color: #083f3c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .12s;
+}
+.pc-btn-edit:hover { background: #c8eae6; }
+
+.pc-btn-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 32px;
+  border: 1px solid #ecc4c4;
+  border-radius: 7px;
+  background: #f6dddd;
+  color: #8a2222;
+  font: inherit;
+  cursor: pointer;
+  transition: background .12s;
+  flex-shrink: 0;
+}
+.pc-btn-del:hover { background: #f0c0c0; }
+
+/* ── Bulk row: profit + supplier meta bar ── */
+.bpr-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 0 2px;
+  border-top: 1px solid #f0f2f4;
+}
+.bpr-profit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f5f7f8;
+  border-radius: 6px;
+  padding: 4px 9px;
+}
