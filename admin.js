@@ -301,6 +301,11 @@ function navigateTo(page){
   if(page==="capital")   renderCapitalPage();
   if(page==="settings")  renderSettingsForm();
   if(page==="suppliers") renderSupplierPage();
+  if(page==="bulk"){
+    if(typeof bulkGameId!=="undefined" && !bulkGameId && games.length) bulkGameId=games[0].id;
+    if(typeof renderBulkPage==="function") renderBulkPage();
+    if(typeof initBulkPageEvents==="function") initBulkPageEvents();
+  }
   closeRailDrawer();
 }
 
@@ -2207,8 +2212,12 @@ function _saveBulkEdits(){
   toast(`${count} produk disimpan & masuk Draft Queue ✓`);
 }
 
-// Event binding bulk page (dipanggil ulang tiap navigasi ke halaman bulk)
+// Event binding bulk page — pakai flag supaya tidak dobel tiap navigasi
+let _bulkEventsInited = false;
 function initBulkPageEvents(){
+  if(_bulkEventsInited) return;
+  _bulkEventsInited = true;
+
   document.querySelector("[data-bulk-save]")?.addEventListener("click", _saveBulkEdits);
   document.querySelector("[data-bulk-apply-to-selected]")?.addEventListener("click", _applyBulkToSelected);
   document.querySelector("[data-bulk-check-all-btn]")?.addEventListener("click",()=>{
@@ -2217,7 +2226,6 @@ function initBulkPageEvents(){
     all.forEach(cb=>cb.checked=anyUnchecked);
     _updateBulkCheckCount();
   });
-  // Update value input saat field berubah
   const applyField=document.querySelector("[data-bulk-apply-field]");
   if(applyField){
     applyField.addEventListener("change",()=>_renderApplyValueInput(applyField.value));
