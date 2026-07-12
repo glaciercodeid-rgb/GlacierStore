@@ -56,6 +56,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         <span>Manajemen Produk</span>
       </button>
+      <button class="rail-button" type="button" data-nav="bulk" title="Bulk Edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="12" width="18" height="4" rx="1"/><rect x="3" y="19" width="11" height="4" rx="1"/><path d="M17 20l2 2 4-4"/></svg>
+        <span>Bulk Edit</span>
+      </button>
       <button class="rail-button" type="button" data-nav="suppliers" title="Supplier">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Supplier</span>
@@ -170,25 +174,8 @@
               <button class="secondary-button" type="button" data-apply-adjust>Terapkan ke Semua</button>
             </div>
           </div>
-          <div class="table-wrap">
-            <table class="product-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Nama Produk</th>
-                  <th>Supplier</th>
-                  <th>Harga Modal</th>
-                  <th>Harga Jual</th>
-                  <th>Promo</th>
-                  <th>Harga Promo</th>
-                  <th>Status Promo</th>
-                  <th>Status Produk</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody data-product-table></tbody>
-            </table>
-          </div>
+          <div data-supplier-filter-bar></div>
+          <div class="product-card-grid" data-product-card-grid></div>
         </div>
       </section>
 
@@ -295,6 +282,49 @@
             </thead>
             <tbody data-capital-table-body></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- Bulk Edit -->
+      <section class="admin-page" data-page="bulk">
+        <div class="page-head">
+          <div>
+            <h1>Bulk Edit Produk</h1>
+            <p>Edit banyak produk sekaligus tanpa buka form satu-satu.</p>
+          </div>
+          <div class="head-actions" style="flex-wrap:wrap;gap:10px">
+            <span style="font-size:13px;font-weight:700;color:var(--teal)" data-bulk-dirty-count></span>
+            <button class="ghost-button" type="button" data-bulk-check-all-btn>☑ Pilih Semua</button>
+            <span style="font-size:13px;font-weight:700;color:var(--muted)" data-bulk-check-count></span>
+            <button class="primary-button" type="button" data-bulk-save disabled>💾 Simpan Semua</button>
+          </div>
+        </div>
+
+        <!-- Apply to selected bar -->
+        <div class="bulk-apply-bar" data-bulk-apply-bar style="display:none;align-items:center;gap:10px;flex-wrap:wrap;
+             background:#f0faf9;border:1px solid var(--teal);border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <span style="font-size:13px;font-weight:700;color:var(--teal-dark)">Terapkan ke yang dipilih:</span>
+          <select data-bulk-apply-field style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px">
+            <option value="">— Pilih field —</option>
+            <option value="status">Status Produk</option>
+            <option value="promoPrice">Harga Promo</option>
+            <option value="promoStart">Mulai Promo</option>
+            <option value="promoEnd">Akhir Promo</option>
+            <option value="supplierId">Supplier</option>
+          </select>
+          <div data-bulk-apply-value-wrap>
+            <input type="text" data-bulk-apply-value placeholder="Nilai..."
+              style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px;width:180px" />
+          </div>
+          <button class="primary-button" type="button" data-bulk-apply-to-selected>Terapkan</button>
+        </div>
+
+        <!-- Game picker -->
+        <div class="product-game-picker" data-bulk-game-picker></div>
+
+        <!-- Product list -->
+        <div class="bulk-product-list" data-bulk-product-list>
+          <p style="color:var(--muted);padding:20px 0">Pilih game di atas untuk mulai bulk edit.</p>
         </div>
       </section>
 
@@ -830,15 +860,6 @@
           script.src = "draft-queue.js";
           script.onload = resolve;
           script.onerror = reject;
-          document.body.appendChild(script);
-        });
-
-        // ── Bulk Edit (tambahan fitur, tidak ubah logic existing) ──
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "bulk-edit.js";
-          script.onload = resolve;
-          script.onerror = () => { console.warn("bulk-edit.js tidak ditemukan, skip."); resolve(); };
           document.body.appendChild(script);
         });
 

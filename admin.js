@@ -807,51 +807,166 @@ function getPromoStatus(p){
   return { label:"Active", cls:"status-active" };
 }
 
+// ── Supplier filter state ──────────────────────────────────
+let productSupplierFilter = "all";
+
 function renderProductTable(){
   const g = activeGame();
-  if(!g){ productTable.innerHTML=`<tr><td colspan="10">Pilih game terlebih dahulu.</td></tr>`; return; }
+  if(!g) return;
 
   selectedGameNameEl.textContent = g.name;
   productGameNameEl.textContent  = g.name;
   productSummaryEl.textContent   = `${g.products.length} varian. Status: ${g.status!=="normal"?`⚠ ${gameStatusLabel(g.status)}`:"✅ Aktif"}`;
 
-  if(!g.products.length){
-    productTable.innerHTML=`<tr><td colspan="10" style="color:#5f6672;padding:20px;text-align:center">Belum ada produk. Klik "+ Tambah Produk" untuk mulai.</td></tr>`;
+  // render supplier filter chips
+  _renderSupplierFilterBar(g);
+
+  // filter produk
+  const filtered = g.products.filter(p=>{
+    if(productSupplierFilter==="all")  return true;
+    if(productSupplierFilter==="none") return !p.supplierId;
+    return p.supplierId===productSupplierFilter;
+  });
+
+  const cardGrid = document.querySelector("[data-product-card-grid]");
+  if(!cardGrid) return;
+
+  if(!filtered.length){
+    cardGrid.innerHTML = `<div class="pc-empty">${g.products.length?"Tidak ada produk untuk supplier ini.":"Belum ada produk. Klik \"+ Tambah Produk\" untuk mulai."}</div>`;
     return;
   }
 
-  productTable.innerHTML = g.products.map((p,i)=>{
-    const ps = getPromoStatus(p);
+  cardGrid.innerHTML = filtered.map(p=>{
+    const i       = g.products.indexOf(p);
+    const ps      = getPromoStatus(p);
     const unavail = p.status!=="normal";
-    const selVal  = p.sellingPrice || p.normal || p.price || "";
-    const promoVal= p.promoPrice || (p.promo ? p.price:"") || "";
-    const badge   = ps.cls
-      ? `<span class="status-badge-table ${ps.cls}">${ps.label}</span>`
-      : `<span class="muted-cell">—</span>`;
-    const statusBadge = unavail
-      ? `<span class="status-badge-table ${p.status==="soldout"?"status-expired":"status-scheduled"}">${p.status==="soldout"?"Stok Habis":"Gangguan"}</span>`
-      : `<span class="status-badge-table status-active">Normal</span>`;
-    const supplierName = supplierNameById(p.supplierId);
-    return `
-      <tr class="${unavail?"is-unavailable":""}" data-product-index="${i}" draggable="true" data-drag-product-index="${i}">
-        <td class="drag-cell"><span class="drag-handle" title="Geser untuk urutkan">⠿</span></td>
-        <td><strong>${esc(p.name)}</strong></td>
-        <td>${supplierName ? `<span class="supplier-chip">${esc(supplierName)}</span>` : `<span class="muted-cell">—</span>`}</td>
-        <td><input type="text" value="${esc(p.costPrice)}" data-inline-field="costPrice" /></td>
-        <td><input type="text" value="${esc(selVal)}" data-inline-field="sellingPrice" /></td>
-        <td><input type="checkbox" ${p.promo||promoVal?"checked":""} data-inline-field="promo" /></td>
-        <td><input type="text" value="${esc(promoVal)}" data-inline-field="promoPrice" /></td>
-        <td>${badge}</td>
-        <td>${statusBadge}</td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-action" type="button" data-edit-product="${i}" title="Edit">✏️</button>
-            <button class="icon-action danger" type="button" data-delete-product="${i}" title="Hapus">🗑</button>
-          </div>
-        </td>
-      </tr>
-    `;
+    const selVal  = p.sellingPrice||p.normal||p.price||"";
+    const promoVal= p.promoPrice||(p.promo?p.price:"")||"";
+    const supName = supplierNameById(p.supplierId);
+
+    const statusColor = unavail?(p.status==="soldout"?"#858b93":"#2e79b8"):"#2e9d68";
+    const statusLabel = unavail?(p.status==="soldout"?"Stok Habis":"Gangguan"):"Normal";
+    const promoColor  = ps.cls==="status-active"?"#2e9d68"
+                      : ps.cls==="status-scheduled"?"#2e79b8"
+                      : ps.cls==="status-expired"?"#858b93":null;
+
+    return `<div class="product-card${unavail?" product-card-unavail":""}"
+               draggable="true"
+               data-drag-product-index="${i}"
+               data-product-index="${i}">
+      <span class="pc-drag-handle" title="Geser untuk urutkan">⠿</span>
+      <div class="pc-top">
+        <span class="pc-name">${esc(p.name)}</span>
+        <span class="pc-dot" style="background:${statusColor}" title="${statusLabel}"></span>
+      </div>
+      <div class="pc-prices">
+        <span class="pc-sell">${esc(selVal||"—")}</span>
+        ${promoVal?`<span class="pc-promo">🏷 ${esc(promoVal)}</span>`:""}
+      </div>
+      <div class="pc-tags">
+        ${supName?`<span class="supplier-chip">${esc(supName)}</span>`:`<span class="pc-tag-muted">No supplier</span>`}
+        <span class="pc-pill" style="background:${statusColor}20;color:${statusColor}">${statusLabel}</span>
+        ${promoColor?`<span class="pc-pill" style="background:${promoColor}20;color:${promoColor}">${ps.label}</span>`:""}
+      </div>
+      ${(p.promoStart||p.promoEnd)?`<div class="pc-sched">
+        ${p.promoStart?`<span>▶ ${esc(p.promoStart.slice(0,16).replace("T"," "))}</span>`:""}
+        ${p.promoEnd  ?`<span>⏹ ${esc(p.promoEnd.slice(0,16).replace("T"," "))}</span>`:""}
+      </div>`:""}
+      <div class="pc-actions">
+        <button class="mini-button" type="button" data-edit-product="${i}">✏️ Edit</button>
+        <button class="delete-button" style="font-size:12px;padding:0 10px;min-height:32px" type="button" data-delete-product="${i}">🗑</button>
+      </div>
+    </div>`;
   }).join("");
+
+  // attach drag-drop pada card grid
+  _attachCardDragDrop(cardGrid);
+  // attach edit/delete pada card grid
+  _attachCardActions(cardGrid);
+}
+
+function _renderSupplierFilterBar(g){
+  const wrap = document.querySelector(".product-panel");
+  if(!wrap) return;
+  let bar = wrap.querySelector("[data-supplier-filter-bar]");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.setAttribute("data-supplier-filter-bar","");
+    bar.className="product-supplier-filter-bar";
+    const grid = wrap.querySelector("[data-product-card-grid]");
+    if(grid) wrap.insertBefore(bar, grid); else wrap.appendChild(bar);
+  }
+  const usedIds = [...new Set(g.products.map(p=>p.supplierId).filter(Boolean))];
+  const usedSup = suppliers.filter(s=>usedIds.includes(s.id));
+  const hasNone = g.products.some(p=>!p.supplierId);
+  if(!usedSup.length && !hasNone){ bar.innerHTML=""; return; }
+  bar.innerHTML=`
+    <span class="sff-label">Filter Supplier:</span>
+    <button class="supplier-filter-chip${productSupplierFilter==="all"?" is-active":""}" data-sf="all">
+      Semua (${g.products.length})
+    </button>
+    ${usedSup.map(s=>{
+      const c=g.products.filter(p=>p.supplierId===s.id).length;
+      return `<button class="supplier-filter-chip${productSupplierFilter===s.id?" is-active":""}" data-sf="${esc(s.id)}">${esc(s.name)} (${c})</button>`;
+    }).join("")}
+    ${hasNone?`<button class="supplier-filter-chip${productSupplierFilter==="none"?" is-active":""}" data-sf="none">Tanpa Supplier (${g.products.filter(p=>!p.supplierId).length})</button>`:""}
+  `;
+  bar.querySelectorAll("[data-sf]").forEach(btn=>{
+    btn.addEventListener("click",()=>{ productSupplierFilter=btn.dataset.sf; renderProductTable(); });
+  });
+}
+
+function _attachCardActions(cardGrid){
+  cardGrid.onclick = async e=>{
+    const editBtn = e.target.closest("[data-edit-product]");
+    if(editBtn){ openProductEditor(Number(editBtn.dataset.editProduct)); return; }
+    const delBtn = e.target.closest("[data-delete-product]");
+    if(delBtn){
+      const g=activeGame(); const i=Number(delBtn.dataset.deleteProduct);
+      const p=g?.products[i]; if(!p) return;
+      const ok=await confirm("Hapus Produk",`Hapus produk "${p.name}"?`);
+      if(!ok) return;
+      g.products.splice(i,1);
+      saveGames();
+      renderProductPage();
+      toast(`Produk "${p.name}" dihapus.`);
+    }
+  };
+}
+
+function _attachCardDragDrop(cardGrid){
+  cardGrid.ondragstart = e=>{
+    const c=e.target.closest("[data-drag-product-index]"); if(!c) return;
+    draggedProductIndex=Number(c.dataset.dragProductIndex);
+    setTimeout(()=>c.classList.add("is-dragging"),0);
+    e.dataTransfer.effectAllowed="move";
+  };
+  cardGrid.ondragend = e=>{
+    document.querySelectorAll(".is-dragging").forEach(el=>el.classList.remove("is-dragging"));
+    document.querySelectorAll(".is-drag-over").forEach(el=>el.classList.remove("is-drag-over"));
+    draggedProductIndex=null;
+  };
+  cardGrid.ondragover = e=>{
+    if(draggedProductIndex===null) return;
+    e.preventDefault();
+    const over=e.target.closest("[data-drag-product-index]");
+    document.querySelectorAll(".is-drag-over").forEach(el=>el.classList.remove("is-drag-over"));
+    if(over) over.classList.add("is-drag-over");
+  };
+  cardGrid.ondrop = e=>{
+    e.preventDefault();
+    const over=e.target.closest("[data-drag-product-index]");
+    if(draggedProductIndex===null||!over) return;
+    const toIdx=Number(over.dataset.dragProductIndex);
+    if(toIdx===draggedProductIndex) return;
+    const g=activeGame(); if(!g) return;
+    const [moved]=g.products.splice(draggedProductIndex,1);
+    g.products.splice(toIdx,0,moved);
+    g.products.forEach((p,i)=>p.sortOrder=i);
+    saveGames();
+    renderProductPage();
+    toast("Urutan produk diperbarui ✓");
+  };
 }
 
 productTable?.addEventListener("change", e=>{
@@ -1910,3 +2025,222 @@ document.querySelector("[data-supplier-table-body]")?.addEventListener("click", 
 
 document.querySelector("[data-open-supplier-modal]")?.addEventListener("click", () => openSupplierModal(null));
 document.querySelector("[data-save-supplier]")?.addEventListener("click", saveSupplierFromForm);
+
+// ═══════════════════════════════════════════════════════════
+//  BULK EDIT
+// ═══════════════════════════════════════════════════════════
+let bulkGameId = null;
+let bulkEdits  = {}; // { idx: { field: value } }
+
+function renderBulkPage(){
+  // Game picker
+  const picker = document.querySelector("[data-bulk-game-picker]");
+  if(picker){
+    picker.innerHTML = games.map(g=>`
+      <button class="game-chip${g.id===bulkGameId?" is-active":""}${g.status!=="normal"?" is-maint":""}"
+        type="button" data-bulk-pick-game="${esc(g.id)}">
+        ${esc(g.initials)} <span>${esc(g.name)}</span>
+      </button>`).join("");
+    picker.querySelectorAll("[data-bulk-pick-game]").forEach(btn=>{
+      btn.addEventListener("click",()=>{ bulkGameId=btn.dataset.bulkPickGame; bulkEdits={}; renderBulkPage(); });
+    });
+  }
+
+  const container = document.querySelector("[data-bulk-product-list]");
+  if(!container) return;
+
+  if(!bulkGameId){
+    container.innerHTML=`<p style="color:var(--muted);padding:20px 0">Pilih game di atas untuk mulai bulk edit.</p>`;
+    return;
+  }
+  const g = games.find(x=>x.id===bulkGameId);
+  if(!g||!g.products.length){
+    container.innerHTML=`<p style="color:var(--muted);padding:20px 0">Game ini belum punya produk.</p>`;
+    return;
+  }
+
+  const dirtyCount = Object.keys(bulkEdits).length;
+  const saveBtn = document.querySelector("[data-bulk-save]");
+  if(saveBtn) saveBtn.disabled = dirtyCount===0;
+  const countEl = document.querySelector("[data-bulk-dirty-count]");
+  if(countEl) countEl.textContent = dirtyCount>0?`${dirtyCount} produk diubah`:"";
+
+  container.innerHTML = g.products.map((p,i)=>{
+    const ed      = bulkEdits[i]||{};
+    const selVal  = ed.sellingPrice ?? (p.sellingPrice||p.normal||p.price||"");
+    const promoVal= ed.promoPrice   ?? (p.promoPrice||(p.promo?p.price:"")||"");
+    const promoSt = ed.promoStart   ?? (p.promoStart||"");
+    const promoEn = ed.promoEnd     ?? (p.promoEnd||"");
+    const status  = ed.status       ?? (p.status||"normal");
+    const suppId  = ed.supplierId   ?? (p.supplierId||"");
+    const isDirty = !!bulkEdits[i];
+    const statusColor=status==="normal"?"#2e9d68":status==="soldout"?"#858b93":"#2e79b8";
+    return `<div class="bulk-product-row${isDirty?" bulk-row-dirty":""}" data-bulk-row="${i}">
+      <div class="bpr-left">
+        <input type="checkbox" class="bpr-checkbox" data-bpr-index="${i}"
+          style="width:18px;height:18px;accent-color:var(--teal);cursor:pointer;flex-shrink:0" />
+        <span class="pc-dot" style="background:${statusColor};flex-shrink:0"></span>
+        <strong style="font-size:13px">${esc(p.name)}</strong>
+        ${isDirty?`<span class="bpr-changed-badge">diubah</span>`:""}
+      </div>
+      <div class="bpr-fields">
+        <label class="bpr-field"><span>Harga Jual</span>
+          <input type="text" class="bpr-input" value="${esc(selVal)}"
+            data-bulk-field="sellingPrice" data-bulk-idx="${i}" /></label>
+        <label class="bpr-field"><span>Harga Promo</span>
+          <input type="text" class="bpr-input" value="${esc(promoVal)}"
+            data-bulk-field="promoPrice" data-bulk-idx="${i}" /></label>
+        <label class="bpr-field"><span>Mulai Promo</span>
+          <input type="datetime-local" class="bpr-input" value="${esc(promoSt)}"
+            data-bulk-field="promoStart" data-bulk-idx="${i}" /></label>
+        <label class="bpr-field"><span>Akhir Promo</span>
+          <input type="datetime-local" class="bpr-input" value="${esc(promoEn)}"
+            data-bulk-field="promoEnd" data-bulk-idx="${i}" /></label>
+        <label class="bpr-field"><span>Status</span>
+          <select class="bpr-input" data-bulk-field="status" data-bulk-idx="${i}">
+            <option value="normal"   ${status==="normal"  ?"selected":""}>Normal</option>
+            <option value="soldout"  ${status==="soldout" ?"selected":""}>Stok Habis</option>
+            <option value="gangguan" ${status==="gangguan"?"selected":""}>Gangguan</option>
+          </select></label>
+        <label class="bpr-field"><span>Supplier</span>
+          <select class="bpr-input" data-bulk-field="supplierId" data-bulk-idx="${i}">
+            <option value="">— Tidak ada —</option>
+            ${suppliers.map(s=>`<option value="${esc(s.id)}"${suppId===s.id?" selected":""}>${esc(s.name)}</option>`).join("")}
+          </select></label>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Events
+  container.querySelectorAll("[data-bulk-field]").forEach(el=>{
+    el.addEventListener("input",  ()=>_handleBulkInput(el));
+    el.addEventListener("change", ()=>_handleBulkInput(el));
+  });
+  container.querySelectorAll(".bpr-checkbox").forEach(cb=>{
+    cb.addEventListener("change", _updateBulkCheckCount);
+  });
+  _updateBulkCheckCount();
+}
+
+function _handleBulkInput(el){
+  const idx=Number(el.dataset.bulkIdx), field=el.dataset.bulkField;
+  if(!bulkEdits[idx]) bulkEdits[idx]={};
+  bulkEdits[idx][field]=el.value;
+  const row=document.querySelector(`[data-bulk-row="${idx}"]`);
+  if(row){
+    row.classList.add("bulk-row-dirty");
+    const badge=row.querySelector(".bpr-changed-badge");
+    if(!badge){
+      const name=row.querySelector(".bpr-left strong");
+      if(name) name.insertAdjacentHTML("afterend",`<span class="bpr-changed-badge">diubah</span>`);
+    }
+  }
+  const saveBtn=document.querySelector("[data-bulk-save]");
+  if(saveBtn) saveBtn.disabled=false;
+  const countEl=document.querySelector("[data-bulk-dirty-count]");
+  if(countEl) countEl.textContent=`${Object.keys(bulkEdits).length} produk diubah`;
+}
+
+function _updateBulkCheckCount(){
+  const checked=document.querySelectorAll(".bpr-checkbox:checked").length;
+  const el=document.querySelector("[data-bulk-check-count]");
+  if(el) el.textContent=checked>0?`${checked} dipilih`:"";
+  const applyBar=document.querySelector("[data-bulk-apply-bar]");
+  if(applyBar) applyBar.style.display=checked>0?"flex":"none";
+}
+
+function _applyBulkToSelected(){
+  const fieldSel = document.querySelector("[data-bulk-apply-field]");
+  const field = fieldSel?.value;
+  if(!field){ toast("Pilih field yang mau diterapkan.","error"); return; }
+
+  // Tentukan value input yang tepat
+  let val="";
+  if(field==="status"){
+    val = document.querySelector("[data-bulk-apply-status]")?.value||"normal";
+  } else if(field==="supplierId"){
+    val = document.querySelector("[data-bulk-apply-supplier]")?.value||"";
+  } else {
+    val = document.querySelector("[data-bulk-apply-value]")?.value||"";
+  }
+
+  const checked=[...document.querySelectorAll(".bpr-checkbox:checked")];
+  if(!checked.length){ toast("Centang produk dulu.","error"); return; }
+  checked.forEach(cb=>{
+    const idx=Number(cb.dataset.bprIndex);
+    if(!bulkEdits[idx]) bulkEdits[idx]={};
+    bulkEdits[idx][field]=val;
+  });
+  renderBulkPage();
+  // Re-centang yang tadi dicentang
+  checked.forEach(cb=>{
+    const newCb=document.querySelector(`.bpr-checkbox[data-bpr-index="${cb.dataset.bprIndex}"]`);
+    if(newCb) newCb.checked=true;
+  });
+  _updateBulkCheckCount();
+  toast(`Diterapkan ke ${checked.length} produk ✓`);
+}
+
+function _saveBulkEdits(){
+  const g=games.find(x=>x.id===bulkGameId);
+  if(!g) return;
+  let count=0;
+  Object.entries(bulkEdits).forEach(([idxStr, changes])=>{
+    const p=g.products[Number(idxStr)]; if(!p) return;
+    Object.assign(p, changes);
+    // sinkronisasi field turunan
+    if(changes.promoPrice!==undefined){
+      p.promo  = Boolean(p.promoPrice);
+      p.price  = p.promoPrice||p.sellingPrice||p.price;
+      p.normal = p.promoPrice ? p.sellingPrice : "";
+    }
+    if(changes.sellingPrice!==undefined && !p.promoPrice){
+      p.price  = p.sellingPrice;
+      p.normal = "";
+    }
+    count++;
+  });
+  // saveGames() yang sudah di-patch di 2904.html → otomatis trigger checkDirtyGames → masuk Draft Queue
+  saveGames();
+  bulkEdits={};
+  renderBulkPage();
+  toast(`${count} produk disimpan & masuk Draft Queue ✓`);
+}
+
+// Event binding bulk page (dipanggil ulang tiap navigasi ke halaman bulk)
+function initBulkPageEvents(){
+  document.querySelector("[data-bulk-save]")?.addEventListener("click", _saveBulkEdits);
+  document.querySelector("[data-bulk-apply-to-selected]")?.addEventListener("click", _applyBulkToSelected);
+  document.querySelector("[data-bulk-check-all-btn]")?.addEventListener("click",()=>{
+    const all=[...document.querySelectorAll(".bpr-checkbox")];
+    const anyUnchecked=all.some(cb=>!cb.checked);
+    all.forEach(cb=>cb.checked=anyUnchecked);
+    _updateBulkCheckCount();
+  });
+  // Update value input saat field berubah
+  const applyField=document.querySelector("[data-bulk-apply-field]");
+  if(applyField){
+    applyField.addEventListener("change",()=>_renderApplyValueInput(applyField.value));
+  }
+}
+
+function _renderApplyValueInput(field){
+  const wrap=document.querySelector("[data-bulk-apply-value-wrap]");
+  if(!wrap) return;
+  if(field==="status"){
+    wrap.innerHTML=`<select data-bulk-apply-status style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px">
+      <option value="normal">Normal</option>
+      <option value="soldout">Stok Habis</option>
+      <option value="gangguan">Gangguan</option>
+    </select>`;
+  } else if(field==="supplierId"){
+    wrap.innerHTML=`<select data-bulk-apply-supplier style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px">
+      <option value="">— Tidak ada —</option>
+      ${suppliers.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}
+    </select>`;
+  } else if(field==="promoStart"||field==="promoEnd"){
+    wrap.innerHTML=`<input type="datetime-local" data-bulk-apply-value style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px" />`;
+  } else {
+    wrap.innerHTML=`<input type="text" data-bulk-apply-value placeholder="Nilai..." style="min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;font:inherit;font-size:13px;width:180px" />`;
+  }
+}
