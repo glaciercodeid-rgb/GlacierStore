@@ -124,6 +124,7 @@ let games        = normalizeGames(readGames());
 let siteSettings = readSettings();
 let orders       = readOrders();
 let suppliers    = readSuppliers();
+let categories   = readCategories();
 let activeGameId = games[0]?.id || "";
 let editingGameId       = null;
 let editingProductIndex = null;
@@ -159,6 +160,35 @@ function saveOrders(){
   // Hanya update cache lokal. Sumber kebenaran (source of truth) tetap Supabase.
   // Penulisan ke Supabase dilakukan terpisah (scPushOrder / scDeleteOrder).
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+}
+
+// ─── CATEGORIES ──────────────────────────────
+const CATEGORIES_KEY = "glaciercode_categories_v1";
+
+// Kategori default sebagai fallback kalau Supabase belum punya data
+const DEFAULT_CATEGORIES = [
+  { id: "cat-diamonds",   name: "Diamonds",   sort_order: 0 },
+  { id: "cat-uc",         name: "UC",         sort_order: 1 },
+  { id: "cat-points",     name: "Points",     sort_order: 2 },
+  { id: "cat-robux",      name: "Robux",      sort_order: 3 },
+  { id: "cat-crystal",    name: "Crystal",    sort_order: 4 },
+  { id: "cat-shard",      name: "Shard",      sort_order: 5 },
+  { id: "cat-cp",         name: "CP",         sort_order: 6 },
+  { id: "cat-membership", name: "Membership", sort_order: 7 },
+  { id: "cat-bundle",     name: "Bundle",     sort_order: 8 },
+];
+
+function readCategories(){
+  try{
+    const s = localStorage.getItem(CATEGORIES_KEY);
+    const p = s ? JSON.parse(s) : [];
+    return Array.isArray(p) && p.length ? p : [...DEFAULT_CATEGORIES];
+  }catch{ return [...DEFAULT_CATEGORIES]; }
+}
+
+function saveCategories(){
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  if(window.scPushCategories) window.scPushCategories(categories).catch(e=>console.warn("Gagal sync kategori:",e));
 }
 
 // ─── SUPPLIERS ───────────────────────────────
@@ -237,6 +267,7 @@ const bulkModal     = document.querySelector("[data-bulk-modal]");
 const saleModal      = document.querySelector("[data-sale-modal]");
 const receiptModal   = document.querySelector("[data-receipt-modal]");
 const supplierModal  = document.querySelector("[data-supplier-modal]");
+// categoryModal diinisialisasi di section CATEGORIES (setelah DOM dimuat penuh)
 const gameForm      = document.querySelector("[data-game-form]");
 const productForm   = document.querySelector("[data-product-form]");
 const profitLine    = document.querySelector("[data-profit-line]");
@@ -282,13 +313,14 @@ function confirm(title, message){
 }
 
 const PAGE_LABELS = {
-  dashboard: "Dashboard",
-  games:     "Katalog Game",
-  products:  "Manajemen Produk",
-  suppliers: "Supplier",
-  sales:     "Penjualan",
-  capital:   "Modal",
-  settings:  "Pengaturan",
+  dashboard:  "Dashboard",
+  games:      "Katalog Game",
+  products:   "Manajemen Produk",
+  suppliers:  "Supplier",
+  categories: "Kategori Produk",
+  sales:      "Penjualan",
+  capital:    "Modal",
+  settings:   "Pengaturan",
 };
 
 function navigateTo(page){
@@ -306,7 +338,8 @@ function navigateTo(page){
   if(page==="sales")     renderSalesPage();
   if(page==="capital")   renderCapitalPage();
   if(page==="settings")  renderSettingsForm();
-  if(page==="suppliers") renderSupplierPage();
+  if(page==="suppliers")  renderSupplierPage();
+  if(page==="categories") renderCategoryPage();
   if(page==="bulk"){
     if(typeof bulkGameId!=="undefined" && !bulkGameId && games.length) bulkGameId=games[0].id;
     if(typeof renderBulkPage==="function") renderBulkPage();
@@ -351,7 +384,8 @@ function openModal(modal){
 }
 
 function closeModals(){
-  [gameModal, productModal, maintenanceModal, bulkModal, saleModal, receiptModal, supplierModal].forEach(m=>{
+  const categoryModalEl = document.querySelector("[data-category-modal]");
+  [gameModal, productModal, maintenanceModal, bulkModal, saleModal, receiptModal, supplierModal, categoryModalEl].forEach(m=>{
     m?.classList.remove("is-open");
     m?.setAttribute("aria-hidden","true");
   });
@@ -1157,6 +1191,21 @@ function populateSupplierDropdowns(){
   });
 }
 
+function populateCategoryDropdowns(){
+  // Isi semua dropdown kategori (di product modal) dari data dinamis
+  document.querySelectorAll("[data-product-category-select]").forEach(sel=>{
+    const current = sel.value;
+    const cats = categories.length ? categories : DEFAULT_CATEGORIES;
+    sel.innerHTML = cats.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+    // Kembalikan nilai yang dipilih sebelumnya (kalau masih ada di daftar)
+    if(current && cats.some(c=>c.name===current)){
+      sel.value = current;
+    } else if(cats.length){
+      sel.value = cats[0].name;
+    }
+  });
+}
+
 function openProductEditor(index=null){
   const g = activeGame();
   if(!g){ toast("Pilih game terlebih dahulu.","error"); return; }
@@ -1164,7 +1213,6 @@ function openProductEditor(index=null){
   clearFormErrors();
   const p = index===null ? null : g.products[index];
   productForm.name.value        = p?.name || "";
-  productForm.category.value    = p?.category || "Diamonds";
   productForm.costPrice.value   = p?.costPrice || "";
   productForm.sellingPrice.value= p?.sellingPrice || p?.normal || p?.price || "";
   productForm.promoPrice.value  = p?.promoPrice || (p?.promo ? p?.price:"") || "";
@@ -1173,6 +1221,15 @@ function openProductEditor(index=null){
   productForm.promoStart.value  = toDatetimeInput(p?.promoStart);
   productForm.promoEnd.value    = toDatetimeInput(p?.promoEnd);
   productForm.status.value      = p?.status || "normal";
+  populateCategoryDropdowns();
+  // Set nilai kategori SETELAH populate (agar option sudah tersedia)
+  const catSel = productForm.querySelector("[data-product-category-select]");
+  if(catSel){
+    const targetCat = p?.category || (categories[0]?.name) || "Diamonds";
+    catSel.value = targetCat;
+    // Fallback kalau kategori produk lama tidak ada di daftar sekarang
+    if(!catSel.value && categories.length) catSel.value = categories[0].name;
+  }
   populateSupplierDropdowns();
   if(productForm.supplierId) productForm.supplierId.value = p?.supplierId || "";
   document.querySelector("#product-modal-title").textContent = index===null ? "Tambah Produk Baru" : "Edit Produk";
@@ -1188,7 +1245,7 @@ function saveProductFromForm(){
   const promoPrice   = String(fd.get("promoPrice")||"").trim();
   const data = {
     name:        String(fd.get("name")||"").trim(),
-    category:    String(fd.get("category")||"Diamonds"),
+    category:    String(fd.get("category")||(categories[0]?.name)||"Diamonds"),
     supplierId:  String(fd.get("supplierId")||"").trim(),
     costPrice:   String(fd.get("costPrice")||"").trim(),
     sellingPrice,
@@ -2118,6 +2175,119 @@ document.querySelector("[data-supplier-table-body]")?.addEventListener("click", 
 
 document.querySelector("[data-open-supplier-modal]")?.addEventListener("click", () => openSupplierModal(null));
 document.querySelector("[data-save-supplier]")?.addEventListener("click", saveSupplierFromForm);
+
+// ═══════════════════════════════════════════════════════════
+//  CATEGORIES — CRUD
+// ═══════════════════════════════════════════════════════════
+let editingCategoryId = null;
+const categoryModal = document.querySelector("[data-category-modal]");
+
+function countProductsForCategory(catName){
+  let count = 0;
+  games.forEach(g => g.products.forEach(p => {
+    if((p.category||"") === catName) count++;
+  }));
+  return count;
+}
+
+function renderCategoryPage(){
+  const body = document.querySelector("[data-category-table-body]");
+  if(!body) return;
+  if(!categories.length){
+    body.innerHTML = `<tr><td colspan="4" class="empty-state">Belum ada kategori. Klik "+ Tambah Kategori" untuk mulai.</td></tr>`;
+    return;
+  }
+  body.innerHTML = categories.map((c, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td>${countProductsForCategory(c.name)} produk</td>
+      <td>
+        <div class="row-actions">
+          <button class="mini-button" data-edit-category="${esc(c.id)}">Edit</button>
+          <button class="delete-button" data-delete-category="${esc(c.id)}">Hapus</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function openCategoryModal(id = null){
+  editingCategoryId = id;
+  const c = id ? categories.find(x => x.id === id) : null;
+  const nameEl = document.querySelector("[data-category-name]");
+  const errEl  = document.querySelector("[data-error='category-name']");
+  if(nameEl) nameEl.value = c?.name || "";
+  if(errEl)  errEl.textContent = "";
+  const titleEl = document.querySelector("#category-modal-title");
+  if(titleEl) titleEl.textContent = id ? "Edit Kategori" : "Tambah Kategori";
+  openModal(categoryModal);
+}
+
+function saveCategoryFromForm(){
+  const name  = (document.querySelector("[data-category-name]")?.value || "").trim();
+  const errEl = document.querySelector("[data-error='category-name']");
+  if(errEl) errEl.textContent = "";
+  if(!name){ if(errEl) errEl.textContent = "Nama kategori wajib diisi."; return; }
+  if(categories.some(c => c.name.toLowerCase() === name.toLowerCase() && c.id !== editingCategoryId)){
+    if(errEl) errEl.textContent = "Nama kategori sudah ada."; return;
+  }
+  if(editingCategoryId){
+    const c = categories.find(x => x.id === editingCategoryId);
+    if(c){
+      const oldName = c.name;
+      c.name = name;
+      // Update nama kategori di semua produk yang pakai kategori lama
+      games.forEach(g => g.products.forEach(p => {
+        if(p.category === oldName) p.category = name;
+      }));
+      saveGames();
+      toast(`Kategori "${name}" diperbarui ✓`);
+    }
+  } else {
+    categories.push({ id: crypto.randomUUID(), name, sort_order: categories.length });
+    toast(`Kategori "${name}" ditambahkan ✓`);
+  }
+  saveCategories();
+  closeModals();
+  renderCategoryPage();
+  // Refresh dropdown di form produk yang mungkin sedang terbuka
+  populateCategoryDropdowns();
+  if(currentPage === "products") renderProductPage();
+}
+
+document.querySelector("[data-category-table-body]")?.addEventListener("click", async e => {
+  const editBtn = e.target.closest("[data-edit-category]");
+  if(editBtn){ openCategoryModal(editBtn.dataset.editCategory); return; }
+
+  const delBtn = e.target.closest("[data-delete-category]");
+  if(delBtn){
+    const id = delBtn.dataset.deleteCategory;
+    const c  = categories.find(x => x.id === id);
+    const count = countProductsForCategory(c?.name || "");
+    const msg = count > 0
+      ? `Hapus kategori "${c?.name}"? ${count} produk yang pakai kategori ini akan jadi tanpa kategori ("").`
+      : `Hapus kategori "${c?.name}"?`;
+    const ok = await confirm("Hapus Kategori", msg);
+    if(!ok) return;
+    // Kosongkan kategori di semua produk yang pakai ini
+    if(count > 0){
+      games.forEach(g => g.products.forEach(p => {
+        if(p.category === c.name) p.category = "";
+      }));
+      saveGames();
+    }
+    categories = categories.filter(x => x.id !== id);
+    saveCategories();
+    renderCategoryPage();
+    populateCategoryDropdowns();
+    toast(`Kategori "${c?.name}" dihapus ✓`);
+    return;
+  }
+});
+
+document.querySelector("[data-open-category-modal]")?.addEventListener("click", () => openCategoryModal(null));
+document.querySelector("[data-save-category]")?.addEventListener("click", saveCategoryFromForm);
 
 // ═══════════════════════════════════════════════════════════
 //  BULK EDIT

@@ -281,6 +281,50 @@
   window.scPushOrder = scPushOrder;
   window.scPullOrders = scPullOrders;
 
+  // ─── CATEGORIES ──────────────────────────────────────────────
+  async function scPullCategories() {
+    const sb = window.supabaseClient;
+    const { data, error } = await sb.from("categories").select("*").order("sort_order");
+    if (error) throw error;
+    // Selalu update localStorage termasuk saat data kosong —
+    // supaya penghapusan kategori ter-sync ke browser lain.
+    const formatted = (data || []).map(c => ({
+      id: c.id,
+      name: c.name,
+      sort_order: c.sort_order || 0,
+    }));
+    localStorage.setItem("glaciercode_categories_v1", JSON.stringify(formatted));
+    return true;
+  }
+
+  async function scPushCategories(categoryList) {
+    const sb = window.supabaseClient;
+    const rows = categoryList.map((c, i) => ({
+      id: c.id,
+      name: c.name,
+      sort_order: i,
+    }));
+    if (rows.length) {
+      const { error } = await sb.from("categories").upsert(rows, { onConflict: "id" });
+      if (error) {
+        console.error("scPushCategories upsert error:", error);
+        throw error;
+      }
+    }
+    // hapus kategori yang sudah tidak ada di list lokal
+    const keepIds = rows.map(r => r.id);
+    const { data: existing, error: selErr } = await sb.from("categories").select("id");
+    if (selErr) { console.warn("scPushCategories: gagal fetch existing:", selErr); return; }
+    const stale = (existing || []).map(r => r.id).filter(id => !keepIds.includes(id));
+    if (stale.length) {
+      const { error: delErr } = await sb.from("categories").delete().in("id", stale);
+      if (delErr) console.warn("scPushCategories: gagal hapus stale:", delErr);
+    }
+  }
+
+  window.scPullCategories = scPullCategories;
+  window.scPushCategories = scPushCategories;
+
   async function scPullSuppliers() {
     const sb = window.supabaseClient;
     const { data, error } = await sb.from("suppliers").select("*").order("sort_order");
@@ -334,6 +378,7 @@
     await scPullCatalog().catch(e => console.warn("Realtime: gagal pull catalog:", e));
     await scPullOrders().catch(e => console.warn("Realtime: gagal pull orders:", e));
     await scPullSuppliers().catch(e => console.warn("Realtime: gagal pull suppliers:", e));
+    await scPullCategories().catch(e => console.warn("Realtime: gagal pull categories:", e));
   }
 
   function scStartRealtime(onSync) {
@@ -362,6 +407,8 @@
         () => scheduleSync("suppliers"))
       .on("postgres_changes", { event: "*", schema: "public", table: "settings" },
         () => scheduleSync("settings"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" },
+        () => scheduleSync("categories"))
       .subscribe((status) => {
         console.log("Realtime status:", status);
       });

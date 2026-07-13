@@ -64,6 +64,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Supplier</span>
       </button>
+      <button class="rail-button" type="button" data-nav="categories" title="Kategori Produk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M18 15v6M15 18h6"/></svg>
+        <span>Kategori</span>
+      </button>
       <button class="rail-button" type="button" data-nav="sales" title="Penjualan">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         <span>Penjualan</span>
@@ -253,6 +257,32 @@
               </tr>
             </thead>
             <tbody data-supplier-table-body></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Categories -->
+      <section class="admin-page" data-page="categories">
+        <div class="page-head">
+          <div>
+            <h1>Kategori Produk</h1>
+            <p>Kelola daftar kategori yang muncul sebagai dropdown di form tambah/edit produk.</p>
+          </div>
+          <div class="head-actions">
+            <button class="primary-button" type="button" data-open-category-modal>+ Tambah Kategori</button>
+          </div>
+        </div>
+        <div class="dash-card">
+          <table class="product-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama Kategori</th>
+                <th>Jumlah Produk</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody data-category-table-body></tbody>
           </table>
         </div>
       </section>
@@ -500,12 +530,9 @@
             </label>
             <label>
               Kategori
-              <select name="category">
+              <select name="category" data-product-category-select>
+                <!-- Diisi dinamis dari data kategori — lihat populateCategoryDropdowns() di admin.js -->
                 <option value="Diamonds">Diamonds</option>
-                <option value="UC">UC</option>
-                <option value="Points">Points</option>
-                <option value="Membership">Membership</option>
-                <option value="Bundle">Bundle</option>
               </select>
             </label>
             <label>
@@ -659,6 +686,30 @@
         <footer class="modal-actions">
           <button class="ghost-button" type="button" data-close-modal>Batal</button>
           <button class="primary-button" type="button" data-save-supplier>Simpan</button>
+        </footer>
+      </section>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal-overlay" data-category-modal aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
+        <header class="modal-head">
+          <h2 id="category-modal-title">Tambah Kategori</h2>
+          <button type="button" data-close-modal aria-label="Tutup">✕</button>
+        </header>
+        <div class="modal-body">
+          <label>
+            Nama Kategori <span class="required">*</span>
+            <input type="text" data-category-name placeholder="Contoh: Robux" />
+            <small class="field-error" data-error="category-name"></small>
+          </label>
+          <p style="margin:10px 0 0;font-size:13px;color:#5f6672">
+            Kategori ini akan langsung muncul di dropdown "Kategori" pada form tambah/edit produk.
+          </p>
+        </div>
+        <footer class="modal-actions">
+          <button class="ghost-button" type="button" data-close-modal>Batal</button>
+          <button class="primary-button" type="button" data-save-category>Simpan</button>
         </footer>
       </section>
     </div>
@@ -826,6 +877,13 @@
               console.warn("Gagal pull suppliers dari Supabase:", e);
             }
           }
+          if (window.scPullCategories) {
+            try {
+              await window.scPullCategories();
+            } catch(e) {
+              console.warn("Gagal pull categories dari Supabase:", e);
+            }
+          }
         } catch (e) {
           console.warn("Gagal tarik data dari Supabase, pakai localStorage/default:", e);
         }
@@ -838,10 +896,9 @@
           document.body.appendChild(script);
         });
 
-        // Reload suppliers dari localStorage (sudah diisi oleh scPullSuppliers di atas)
-        if (typeof suppliers !== "undefined" && typeof readSuppliers === "function") {
-          suppliers = readSuppliers();
-        }
+        // Reload suppliers dan categories dari localStorage (sudah diisi pull di atas)
+        if (typeof suppliers   !== "undefined" && typeof readSuppliers   === "function") suppliers   = readSuppliers();
+        if (typeof categories  !== "undefined" && typeof readCategories  === "function") categories  = readCategories();
 
         const _saveGames = saveGames;
         saveGames = function () {
@@ -868,10 +925,11 @@
         // ── Realtime sync: kalau ada perubahan di Supabase, reload data & re-render ──
         window.scStartRealtime(function onSync(table) {
           // Reload semua variable dari localStorage (yang sudah diupdate scPullAll)
-          if (typeof readGames    === "function") games        = normalizeGames(readGames());
-          if (typeof readOrders   === "function") orders       = readOrders();
-          if (typeof readSuppliers=== "function") suppliers    = readSuppliers();
-          if (typeof readSettings === "function") siteSettings = readSettings();
+          if (typeof readGames      === "function") games        = normalizeGames(readGames());
+          if (typeof readOrders     === "function") orders       = readOrders();
+          if (typeof readSuppliers  === "function") suppliers    = readSuppliers();
+          if (typeof readCategories === "function") categories   = readCategories();
+          if (typeof readSettings   === "function") siteSettings = readSettings();
 
           // Re-render halaman yang sedang aktif
           const page = typeof currentPage !== "undefined" ? currentPage : "";
@@ -881,6 +939,7 @@
           if (page === "sales")      { if(typeof renderSalesPage   ==="function") renderSalesPage(); }
           if (page === "capital")    { if(typeof renderCapitalPage ==="function") renderCapitalPage(); }
           if (page === "suppliers")  { if(typeof renderSupplierPage==="function") renderSupplierPage(); }
+          if (page === "categories") { if(typeof renderCategoryPage==="function") renderCategoryPage(); }
           if (page === "settings")   { if(typeof renderSettingsForm==="function") renderSettingsForm(); }
           if (page === "draft")      { if(typeof renderDraftPage   ==="function") renderDraftPage(); }
 
@@ -894,10 +953,11 @@
         // setiap 5 detik untuk sales dan settings, bandingkan dengan state lokal,
         // update hanya kalau ada perbedaan nyata.
 
-        let _lastOrdersHash = "";
-        let _lastSettingsHash = "";
-        let _lastCatalogHash = "";
+        let _lastOrdersHash    = "";
+        let _lastSettingsHash  = "";
+        let _lastCatalogHash   = "";
         let _lastSuppliersHash = "";
+        let _lastCategoriesHash = "";
 
         function _rerender(page) {
           if (page === "dashboard")  { if (typeof renderDashboard   === "function") renderDashboard(); }
@@ -906,6 +966,7 @@
           if (page === "sales")      { if (typeof renderSalesPage    === "function") renderSalesPage(); }
           if (page === "capital")    { if (typeof renderCapitalPage  === "function") renderCapitalPage(); }
           if (page === "suppliers")  { if (typeof renderSupplierPage === "function") renderSupplierPage(); }
+                if (page === "categories") { if (typeof renderCategoryPage === "function") renderCategoryPage(); }
           if (page === "settings")   { if (typeof renderSettingsForm === "function") renderSettingsForm(); }
           if (page === "draft")      { if (typeof renderDraftPage    === "function") renderDraftPage(); }
           if (typeof updateDraftBadge === "function") updateDraftBadge();
@@ -962,16 +1023,29 @@
               }
             }
 
+            // ── Poll categories ──
+            if (window.scPullCategories) {
+              await window.scPullCategories();
+              const freshCat = localStorage.getItem("glaciercode_categories_v1") || "[]";
+              if (freshCat !== _lastCategoriesHash) {
+                _lastCategoriesHash = freshCat;
+                if (typeof readCategories === "function") categories = readCategories();
+                if (page === "categories") { if (typeof renderCategoryPage === "function") renderCategoryPage(); }
+                if (page === "products")   { if (typeof populateCategoryDropdowns === "function") populateCategoryDropdowns(); }
+              }
+            }
+
           } catch(e) {
             // polling gagal (offline dll) — diam saja, coba lagi di interval berikutnya
           }
         }
 
         // Inisialisasi hash awal dari data yang sudah di-pull saat boot
-        _lastOrdersHash    = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY   || "glaciercode_orders_v1")        || "[]";
-        _lastSettingsHash  = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
-        _lastCatalogHash   = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1")       || "[]";
-        _lastSuppliersHash = localStorage.getItem("glaciercode_suppliers_v1")                                        || "[]";
+        _lastOrdersHash     = localStorage.getItem(window.GLACIERCODE_ORDERS_KEY   || "glaciercode_orders_v1")        || "[]";
+        _lastSettingsHash   = localStorage.getItem(window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1") || "{}";
+        _lastCatalogHash    = localStorage.getItem(window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1")       || "[]";
+        _lastSuppliersHash  = localStorage.getItem("glaciercode_suppliers_v1")                                        || "[]";
+        _lastCategoriesHash = localStorage.getItem("glaciercode_categories_v1")                                       || "[]";
 
         // Poll setiap 5 detik — semua data
         const _pollInterval = setInterval(_pollAll, 5000);
