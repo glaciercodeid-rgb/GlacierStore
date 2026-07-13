@@ -690,45 +690,6 @@ button {
   line-height: 1.6;
 }
 
-/* ── Price category filter chips ─── */
-.price-category-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.price-category-filter[hidden] {
-  display: none;
-}
-
-.cat-chip {
-  padding: 6px 16px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 253, 247, 0.92);
-  color: var(--muted);
-  font-family: "Raleway", Arial, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease;
-}
-
-.cat-chip:hover {
-  border-color: var(--ember);
-  color: var(--ember);
-}
-
-.cat-chip.is-active {
-  background: var(--ember);
-  border-color: var(--ember);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(47, 156, 143, 0.28);
-}
-/* ─────────────────────────────────── */
-
 .game-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -962,10 +923,12 @@ button {
 
 .price-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-auto-rows: min-content;
   gap: 14px;
   min-height: 312px;
   transition: opacity 150ms ease;
+  align-content: start;
 }
 
 .checkout-panel {
@@ -1064,6 +1027,7 @@ button {
 .price-card {
   position: relative;
   min-width: 0;
+  max-width: 280px;
   background: var(--card);
   border: 1px solid var(--line);
   border-left-width: 1px;
@@ -1761,7 +1725,7 @@ button {
   }
 
   .price-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 
   .product-layout {
@@ -1897,7 +1861,7 @@ button {
   }
 
   .price-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 10px;
     min-height: 368px;
   }
