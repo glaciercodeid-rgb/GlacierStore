@@ -178,6 +178,7 @@ let priceObserver = null;
 let tickTimer = null;
 let offlineGateDismissed = false;
 let bannerDismissed = false;
+let activeCategoryFilter = "semua";
 
 function formatProductKey(gameId, productName) {
   return `${gameId}:${productName}`;
@@ -272,9 +273,60 @@ function renderOperationalStatus() {
   }
 }
 
+function getGameCategories() {
+  // Kumpulkan semua kategori unik dari semua produk di semua game
+  const cats = new Set();
+  games.forEach((game) => {
+    (game.products || []).forEach((p) => {
+      if (p.category && p.category.trim()) cats.add(p.category.trim());
+    });
+  });
+  return ["semua", ...Array.from(cats).sort()];
+}
+
+function getFilteredGames() {
+  if (activeCategoryFilter === "semua") return games;
+  return games.filter((game) =>
+    (game.products || []).some(
+      (p) => (p.category || "").trim() === activeCategoryFilter
+    )
+  );
+}
+
+function renderCategoryFilter() {
+  const container = document.querySelector("[data-category-filter]");
+  if (!container) return;
+  const categories = getGameCategories();
+
+  // Sembunyikan filter bar kalau tidak ada kategori produk sama sekali
+  if (categories.length <= 1) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+
+  container.innerHTML = categories
+    .map((cat) => {
+      const isActive = cat === activeCategoryFilter;
+      return `<button class="cat-chip${isActive ? " is-active" : ""}" type="button" data-cat="${escapeHtml(cat)}">${escapeHtml(cat === "semua" ? "Semua" : cat)}</button>`;
+    })
+    .join("");
+}
+
 function renderGames() {
   ensureActiveGame();
-  gameGrid.innerHTML = games
+  const visibleGames = getFilteredGames();
+
+  // Pastikan activeGameId masih ada di game yang terfilter
+  if (!visibleGames.some((g) => g.id === activeGameId)) {
+    const firstAvail = visibleGames.find((g) => !isUnavailable(g));
+    if (firstAvail) {
+      activeGameId = firstAvail.id;
+      selectedProductKey = "";
+    }
+  }
+
+  gameGrid.innerHTML = visibleGames
     .map((game) => {
       const disabled = isUnavailable(game);
       const comingSoon = isComingSoon(game);
@@ -661,6 +713,7 @@ window.addEventListener("scroll", setHeaderState, { passive: true });
 window.addEventListener("storage", (event) => {
   if (event.key === STORAGE_KEY) {
     games = readStoredGames();
+    renderCategoryFilter();
     renderGames();
     renderPrices(false);
   }
@@ -674,6 +727,15 @@ window.addEventListener("storage", (event) => {
     renderOperationalStatus();
     if (isGlobalMaintenanceActive()) showMaintenanceGate();
   }
+});
+
+document.querySelector("[data-category-filter]")?.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-cat]");
+  if (!chip) return;
+  activeCategoryFilter = chip.dataset.cat;
+  renderCategoryFilter();
+  renderGames();
+  renderPrices(false);
 });
 
 gameGrid.addEventListener("click", (event) => {
@@ -727,6 +789,7 @@ document.addEventListener("keydown", (event) => {
 setHeaderState();
 renderSettingsText();
 renderOperationalStatus();
+renderCategoryFilter();
 renderGames();
 renderPrices(true);
 updateZoneIdVisibility();
@@ -767,6 +830,7 @@ async function _pollLanding() {
         _lastCatalogHash = freshCatalog;
         games = readStoredGames();
         ensureActiveGame();
+        renderCategoryFilter();
         renderGames();
         renderPrices(false);
       }
