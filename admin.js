@@ -803,6 +803,8 @@ document.querySelector("[data-product-game-picker]")?.addEventListener("click", 
   const btn = e.target.closest("[data-pick-game]");
   if(!btn) return;
   activeGameId = btn.dataset.pickGame;
+  productSupplierFilter = "all";
+  productStatusFilter   = "all";
   renderProductPage();
 });
 
@@ -820,6 +822,7 @@ function getPromoStatus(p){
 
 // ── Supplier filter state ──────────────────────────────────
 let productSupplierFilter = "all";
+let productStatusFilter   = "all";
 
 function renderProductTable(){
   const g = activeGame();
@@ -831,12 +834,19 @@ function renderProductTable(){
 
   // render supplier filter chips
   _renderSupplierFilterBar(g);
+  // render status filter chips
+  _renderStatusFilterBar(g);
 
   // filter produk
   const filtered = g.products.filter(p=>{
-    if(productSupplierFilter==="all")  return true;
-    if(productSupplierFilter==="none") return !p.supplierId;
-    return p.supplierId===productSupplierFilter;
+    // filter supplier
+    if(productSupplierFilter!=="all"){
+      if(productSupplierFilter==="none" && p.supplierId) return false;
+      if(productSupplierFilter!=="none" && p.supplierId!==productSupplierFilter) return false;
+    }
+    // filter status
+    if(productStatusFilter!=="all" && (p.status||"normal")!==productStatusFilter) return false;
+    return true;
   });
 
   const cardGrid = document.querySelector("[data-product-card-grid]");
@@ -886,6 +896,7 @@ function renderProductTable(){
       </div>
 
       <div class="pc-prices">
+        ${p.costPrice?`<span class="pc-modal" title="Harga Modal">Modal: ${esc(p.costPrice)}</span>`:""}
         <span class="pc-sell">${esc(selVal||"—")}</span>
         ${promoVal?`<span class="pc-promo">🏷 ${esc(promoVal)}</span>`:""}
       </div>
@@ -955,6 +966,47 @@ function _renderSupplierFilterBar(g){
   `;
   bar.querySelectorAll("[data-sf]").forEach(btn=>{
     btn.addEventListener("click",()=>{ productSupplierFilter=btn.dataset.sf; renderProductTable(); });
+  });
+}
+
+function _renderStatusFilterBar(g){
+  const wrap = document.querySelector(".product-panel");
+  if(!wrap) return;
+  let bar = wrap.querySelector("[data-status-filter-bar]");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.setAttribute("data-status-filter-bar","");
+    bar.className="product-supplier-filter-bar";
+    // pasang setelah supplier filter bar
+    const supBar = wrap.querySelector("[data-supplier-filter-bar]");
+    const grid   = wrap.querySelector("[data-product-card-grid]");
+    if(supBar) supBar.insertAdjacentElement("afterend", bar);
+    else if(grid) wrap.insertBefore(bar, grid);
+    else wrap.appendChild(bar);
+  }
+  const counts = {
+    all:      g.products.length,
+    normal:   g.products.filter(p=>(p.status||"normal")==="normal").length,
+    soldout:  g.products.filter(p=>p.status==="soldout").length,
+    gangguan: g.products.filter(p=>p.status==="gangguan").length,
+  };
+  bar.innerHTML=`
+    <span class="sff-label">Filter Status:</span>
+    <button class="supplier-filter-chip${productStatusFilter==="all"?" is-active":""}" data-psf="all">
+      Semua (${counts.all})
+    </button>
+    <button class="supplier-filter-chip${productStatusFilter==="normal"?" is-active":""}" data-psf="normal">
+      ✅ Normal (${counts.normal})
+    </button>
+    <button class="supplier-filter-chip${productStatusFilter==="soldout"?" is-active":""}" data-psf="soldout">
+      ⬜ Stok Habis (${counts.soldout})
+    </button>
+    <button class="supplier-filter-chip${productStatusFilter==="gangguan"?" is-active":""}" data-psf="gangguan">
+      🔵 Gangguan (${counts.gangguan})
+    </button>
+  `;
+  bar.querySelectorAll("[data-psf]").forEach(btn=>{
+    btn.addEventListener("click",()=>{ productStatusFilter=btn.dataset.psf; renderProductTable(); });
   });
 }
 
@@ -2070,8 +2122,9 @@ document.querySelector("[data-save-supplier]")?.addEventListener("click", saveSu
 // ═══════════════════════════════════════════════════════════
 //  BULK EDIT
 // ═══════════════════════════════════════════════════════════
-let bulkGameId = null;
-let bulkEdits  = {}; // { idx: { field: value } }
+let bulkGameId     = null;
+let bulkEdits      = {}; // { idx: { field: value } }
+let bulkStatusFilter = "all"; // filter status di bulk page
 
 function renderBulkPage(){
   // Game picker
@@ -2083,7 +2136,7 @@ function renderBulkPage(){
         ${esc(g.initials)} <span>${esc(g.name)}</span>
       </button>`).join("");
     picker.querySelectorAll("[data-bulk-pick-game]").forEach(btn=>{
-      btn.addEventListener("click",()=>{ bulkGameId=btn.dataset.bulkPickGame; bulkEdits={}; renderBulkPage(); });
+      btn.addEventListener("click",()=>{ bulkGameId=btn.dataset.bulkPickGame; bulkEdits={}; bulkStatusFilter="all"; renderBulkPage(); });
     });
   }
 
@@ -2106,7 +2159,37 @@ function renderBulkPage(){
   const countEl = document.querySelector("[data-bulk-dirty-count]");
   if(countEl) countEl.textContent = dirtyCount>0?`${dirtyCount} produk diubah`:"";
 
-  container.innerHTML = g.products.map((p,i)=>{
+  // ── Filter status bar di bulk ──
+  let bulkStatusBar = document.querySelector("[data-bulk-status-filter-bar]");
+  if(!bulkStatusBar){
+    bulkStatusBar = document.createElement("div");
+    bulkStatusBar.setAttribute("data-bulk-status-filter-bar","");
+    bulkStatusBar.className="product-supplier-filter-bar";
+    container.insertAdjacentElement("beforebegin", bulkStatusBar);
+  }
+  const bsCounts = {
+    all:      g.products.length,
+    normal:   g.products.filter(p=>(p.status||"normal")==="normal").length,
+    soldout:  g.products.filter(p=>p.status==="soldout").length,
+    gangguan: g.products.filter(p=>p.status==="gangguan").length,
+  };
+  bulkStatusBar.innerHTML=`
+    <span class="sff-label">Filter Status:</span>
+    <button class="supplier-filter-chip${bulkStatusFilter==="all"?" is-active":""}" data-bsf="all">Semua (${bsCounts.all})</button>
+    <button class="supplier-filter-chip${bulkStatusFilter==="normal"?" is-active":""}" data-bsf="normal">✅ Normal (${bsCounts.normal})</button>
+    <button class="supplier-filter-chip${bulkStatusFilter==="soldout"?" is-active":""}" data-bsf="soldout">⬜ Stok Habis (${bsCounts.soldout})</button>
+    <button class="supplier-filter-chip${bulkStatusFilter==="gangguan"?" is-active":""}" data-bsf="gangguan">🔵 Gangguan (${bsCounts.gangguan})</button>
+  `;
+  bulkStatusBar.querySelectorAll("[data-bsf]").forEach(btn=>{
+    btn.addEventListener("click",()=>{ bulkStatusFilter=btn.dataset.bsf; renderBulkPage(); });
+  });
+
+  // produk yang ditampilkan setelah filter status
+  const bulkFiltered = g.products
+    .map((p,i)=>({p,i}))
+    .filter(({p})=> bulkStatusFilter==="all" || (p.status||"normal")===bulkStatusFilter);
+
+  container.innerHTML = bulkFiltered.map(({p,i})=>{
     const ed      = bulkEdits[i]||{};
     const selVal  = ed.sellingPrice ?? (p.sellingPrice||p.normal||p.price||"");
     const promoVal= ed.promoPrice   ?? (p.promoPrice||(p.promo?p.price:"")||"");
