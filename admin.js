@@ -4,6 +4,34 @@
 const STORAGE_KEY  = window.GLACIERCODE_STORAGE_KEY  || "glaciercode_catalog_v1";
 const SETTINGS_KEY = window.GLACIERCODE_SETTINGS_KEY || "glaciercode_site_settings_v1";
 const ORDERS_KEY   = window.GLACIERCODE_ORDERS_KEY    || "glaciercode_orders_v1";
+
+// ─── CATEGORIES (dideklarasi di atas supaya readCategories() bisa dipanggil saat init) ───
+const CATEGORIES_KEY = "glaciercode_categories_v1";
+
+const DEFAULT_CATEGORIES = [
+  { id: "cat-diamonds",   name: "Diamonds",   sort_order: 0 },
+  { id: "cat-uc",         name: "UC",         sort_order: 1 },
+  { id: "cat-points",     name: "Points",     sort_order: 2 },
+  { id: "cat-robux",      name: "Robux",      sort_order: 3 },
+  { id: "cat-crystal",    name: "Crystal",    sort_order: 4 },
+  { id: "cat-shard",      name: "Shard",      sort_order: 5 },
+  { id: "cat-cp",         name: "CP",         sort_order: 6 },
+  { id: "cat-membership", name: "Membership", sort_order: 7 },
+  { id: "cat-bundle",     name: "Bundle",     sort_order: 8 },
+];
+
+function readCategories(){
+  try{
+    const s = localStorage.getItem(CATEGORIES_KEY);
+    const p = s ? JSON.parse(s) : [];
+    return Array.isArray(p) && p.length ? p : [...DEFAULT_CATEGORIES];
+  }catch{ return [...DEFAULT_CATEGORIES]; }
+}
+
+function saveCategories(){
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  if(window.scPushCategories) window.scPushCategories(categories).catch(e=>console.warn("Gagal sync kategori:",e));
+}
 const DEFAULT_GAMES    = window.GLACIERCODE_DEFAULT_GAMES    || [];
 const DEFAULT_SETTINGS = window.GLACIERCODE_DEFAULT_SETTINGS || {};
 
@@ -160,35 +188,6 @@ function saveOrders(){
   // Hanya update cache lokal. Sumber kebenaran (source of truth) tetap Supabase.
   // Penulisan ke Supabase dilakukan terpisah (scPushOrder / scDeleteOrder).
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
-
-// ─── CATEGORIES ──────────────────────────────
-const CATEGORIES_KEY = "glaciercode_categories_v1";
-
-// Kategori default sebagai fallback kalau Supabase belum punya data
-const DEFAULT_CATEGORIES = [
-  { id: "cat-diamonds",   name: "Diamonds",   sort_order: 0 },
-  { id: "cat-uc",         name: "UC",         sort_order: 1 },
-  { id: "cat-points",     name: "Points",     sort_order: 2 },
-  { id: "cat-robux",      name: "Robux",      sort_order: 3 },
-  { id: "cat-crystal",    name: "Crystal",    sort_order: 4 },
-  { id: "cat-shard",      name: "Shard",      sort_order: 5 },
-  { id: "cat-cp",         name: "CP",         sort_order: 6 },
-  { id: "cat-membership", name: "Membership", sort_order: 7 },
-  { id: "cat-bundle",     name: "Bundle",     sort_order: 8 },
-];
-
-function readCategories(){
-  try{
-    const s = localStorage.getItem(CATEGORIES_KEY);
-    const p = s ? JSON.parse(s) : [];
-    return Array.isArray(p) && p.length ? p : [...DEFAULT_CATEGORIES];
-  }catch{ return [...DEFAULT_CATEGORIES]; }
-}
-
-function saveCategories(){
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-  if(window.scPushCategories) window.scPushCategories(categories).catch(e=>console.warn("Gagal sync kategori:",e));
 }
 
 // ─── SUPPLIERS ───────────────────────────────

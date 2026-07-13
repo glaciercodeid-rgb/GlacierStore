@@ -896,9 +896,9 @@
           document.body.appendChild(script);
         });
 
-        // Reload suppliers dan categories dari localStorage (sudah diisi pull di atas)
-        if (typeof suppliers   !== "undefined" && typeof readSuppliers   === "function") suppliers   = readSuppliers();
-        if (typeof categories  !== "undefined" && typeof readCategories  === "function") categories  = readCategories();
+        // Reload suppliers dari localStorage (sudah diisi pull di atas)
+        // categories di-reload otomatis via readCategories() saat admin.js init
+        if (typeof suppliers !== "undefined" && typeof readSuppliers === "function") suppliers = readSuppliers();
 
         const _saveGames = saveGames;
         saveGames = function () {
