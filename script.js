@@ -178,7 +178,7 @@ let priceObserver = null;
 let tickTimer = null;
 let offlineGateDismissed = false;
 let bannerDismissed = false;
-let activeCategoryFilter = "semua";
+let activePriceCategory = null; // null = tampilkan semua, string = filter ke kategori itu
 
 function formatProductKey(gameId, productName) {
   return `${gameId}:${productName}`;
@@ -273,60 +273,9 @@ function renderOperationalStatus() {
   }
 }
 
-function getGameCategories() {
-  // Kumpulkan semua kategori unik dari semua produk di semua game
-  const cats = new Set();
-  games.forEach((game) => {
-    (game.products || []).forEach((p) => {
-      if (p.category && p.category.trim()) cats.add(p.category.trim());
-    });
-  });
-  return ["semua", ...Array.from(cats).sort()];
-}
-
-function getFilteredGames() {
-  if (activeCategoryFilter === "semua") return games;
-  return games.filter((game) =>
-    (game.products || []).some(
-      (p) => (p.category || "").trim() === activeCategoryFilter
-    )
-  );
-}
-
-function renderCategoryFilter() {
-  const container = document.querySelector("[data-category-filter]");
-  if (!container) return;
-  const categories = getGameCategories();
-
-  // Sembunyikan filter bar kalau tidak ada kategori produk sama sekali
-  if (categories.length <= 1) {
-    container.hidden = true;
-    return;
-  }
-  container.hidden = false;
-
-  container.innerHTML = categories
-    .map((cat) => {
-      const isActive = cat === activeCategoryFilter;
-      return `<button class="cat-chip${isActive ? " is-active" : ""}" type="button" data-cat="${escapeHtml(cat)}">${escapeHtml(cat === "semua" ? "Semua" : cat)}</button>`;
-    })
-    .join("");
-}
-
 function renderGames() {
   ensureActiveGame();
-  const visibleGames = getFilteredGames();
-
-  // Pastikan activeGameId masih ada di game yang terfilter
-  if (!visibleGames.some((g) => g.id === activeGameId)) {
-    const firstAvail = visibleGames.find((g) => !isUnavailable(g));
-    if (firstAvail) {
-      activeGameId = firstAvail.id;
-      selectedProductKey = "";
-    }
-  }
-
-  gameGrid.innerHTML = visibleGames
+  gameGrid.innerHTML = games
     .map((game) => {
       const disabled = isUnavailable(game);
       const comingSoon = isComingSoon(game);
@@ -350,6 +299,46 @@ function renderGames() {
     .join("");
 }
 
+function renderPriceCategoryFilter(game) {
+  const container = document.querySelector("[data-price-category-filter]");
+  if (!container) return;
+
+  if (!game || isUnavailable(game)) {
+    container.hidden = true;
+    return;
+  }
+
+  // Kumpulkan kategori unik dari produk game ini (hanya yang ada isinya)
+  const cats = [];
+  const seen = new Set();
+  (game.products || []).forEach((p) => {
+    const cat = (p.category || "").trim();
+    if (cat && !seen.has(cat)) {
+      seen.add(cat);
+      cats.push(cat);
+    }
+  });
+
+  // Kalau tidak ada kategori sama sekali, sembunyikan filter
+  if (cats.length === 0) {
+    container.hidden = true;
+    return;
+  }
+
+  // Reset active category kalau tidak ada di game ini
+  if (activePriceCategory && !seen.has(activePriceCategory)) {
+    activePriceCategory = null;
+  }
+
+  container.hidden = false;
+  container.innerHTML = cats
+    .map((cat) => {
+      const isActive = cat === activePriceCategory;
+      return `<button class="cat-chip${isActive ? " is-active" : ""}" type="button" data-price-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    })
+    .join("");
+}
+
 function renderPrices(animate = true) {
   ensureActiveGame();
   const activeGame = getActiveGame();
@@ -357,6 +346,7 @@ function renderPrices(animate = true) {
   if (!activeGame) {
     selectedGameName.textContent = "Game";
     priceGrid.innerHTML = '<p class="empty-state">Belum ada game yang tersedia.</p>';
+    renderPriceCategoryFilter(null);
     updateCheckout();
     return;
   }
@@ -367,18 +357,28 @@ function renderPrices(animate = true) {
     priceGrid.innerHTML = isComingSoon(activeGame)
       ? `<p class="empty-state">${escapeHtml(activeGame.name)} akan segera hadir di GlacierStore. Nantikan ya!</p>`
       : `<p class="empty-state">${escapeHtml(activeGame.name)} sedang ${statusText(activeGame, "gangguan")}. Cek lagi nanti atau hubungi admin.</p>`;
+    renderPriceCategoryFilter(null);
     updateCheckout();
     return;
   }
 
   if (!activeGame.products.length) {
     priceGrid.innerHTML = '<p class="empty-state">Belum ada harga untuk game ini. Hubungi admin untuk cek ketersediaan.</p>';
+    renderPriceCategoryFilter(null);
     updateCheckout();
     return;
   }
 
-  const firstAvailableProduct = activeGame.products.find((product) => !isUnavailable(product));
-  const selectedStillValid = activeGame.products.some((product) => {
+  // Render filter chip kategori
+  renderPriceCategoryFilter(activeGame);
+
+  // Filter produk sesuai kategori aktif (kalau null = tampilkan semua)
+  const visibleProducts = activePriceCategory
+    ? activeGame.products.filter((p) => (p.category || "").trim() === activePriceCategory)
+    : activeGame.products;
+
+  const firstAvailableProduct = visibleProducts.find((product) => !isUnavailable(product));
+  const selectedStillValid = visibleProducts.some((product) => {
     return formatProductKey(activeGame.id, product.name) === selectedProductKey && !isUnavailable(product);
   });
 
@@ -386,7 +386,7 @@ function renderPrices(animate = true) {
     selectedProductKey = firstAvailableProduct ? formatProductKey(activeGame.id, firstAvailableProduct.name) : "";
   }
 
-  priceGrid.innerHTML = activeGame.products
+  priceGrid.innerHTML = visibleProducts
     .map((product, index) => {
       const key = formatProductKey(activeGame.id, product.name);
       const disabled = isUnavailable(product);
@@ -463,6 +463,7 @@ function switchGame(gameId, card) {
   if (gameId === activeGameId) return;
   activeGameId = gameId;
   selectedProductKey = "";
+  activePriceCategory = null;
   document.querySelectorAll(".game-card").forEach((item) => {
     const isActive = item.dataset.gameId === activeGameId;
     item.classList.toggle("is-active", isActive);
@@ -713,7 +714,6 @@ window.addEventListener("scroll", setHeaderState, { passive: true });
 window.addEventListener("storage", (event) => {
   if (event.key === STORAGE_KEY) {
     games = readStoredGames();
-    renderCategoryFilter();
     renderGames();
     renderPrices(false);
   }
@@ -729,15 +729,6 @@ window.addEventListener("storage", (event) => {
   }
 });
 
-document.querySelector("[data-category-filter]")?.addEventListener("click", (event) => {
-  const chip = event.target.closest("[data-cat]");
-  if (!chip) return;
-  activeCategoryFilter = chip.dataset.cat;
-  renderCategoryFilter();
-  renderGames();
-  renderPrices(false);
-});
-
 gameGrid.addEventListener("click", (event) => {
   const card = event.target.closest(".game-card");
   if (!card || card.disabled) return;
@@ -745,6 +736,15 @@ gameGrid.addEventListener("click", (event) => {
   card.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
   card.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
   switchGame(card.dataset.gameId, card);
+});
+
+document.querySelector("[data-price-category-filter]")?.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-price-cat]");
+  if (!chip) return;
+  const cat = chip.dataset.priceCat;
+  // Toggle: klik chip aktif = matikan filter, klik chip lain = aktifkan
+  activePriceCategory = activePriceCategory === cat ? null : cat;
+  renderPrices(false);
 });
 
 priceGrid.addEventListener("click", (event) => {
@@ -789,7 +789,6 @@ document.addEventListener("keydown", (event) => {
 setHeaderState();
 renderSettingsText();
 renderOperationalStatus();
-renderCategoryFilter();
 renderGames();
 renderPrices(true);
 updateZoneIdVisibility();
@@ -830,7 +829,6 @@ async function _pollLanding() {
         _lastCatalogHash = freshCatalog;
         games = readStoredGames();
         ensureActiveGame();
-        renderCategoryFilter();
         renderGames();
         renderPrices(false);
       }

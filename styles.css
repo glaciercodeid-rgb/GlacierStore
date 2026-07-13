@@ -690,15 +690,15 @@ button {
   line-height: 1.6;
 }
 
-/* ── Category filter bar ─────────────────────────────────────── */
-.category-filter {
+/* ── Price category filter chips ─── */
+.price-category-filter {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
-.category-filter[hidden] {
+.price-category-filter[hidden] {
   display: none;
 }
 
@@ -711,10 +711,9 @@ button {
   font-family: "Raleway", Arial, sans-serif;
   font-size: 13px;
   font-weight: 600;
-  line-height: 1;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease;
   white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
 
 .cat-chip:hover {
@@ -728,7 +727,7 @@ button {
   color: #fff;
   box-shadow: 0 2px 8px rgba(47, 156, 143, 0.28);
 }
-/* ─────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────── */
 
 .game-grid {
   display: grid;
